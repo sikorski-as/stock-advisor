@@ -1,1 +1,3 @@
-domain = "desktop-jcug7jt"
+domain = ""
+DB_PATH = ""
+API_KEY = ""

@@ -1,14 +1,14 @@
-import os
-
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 
+import config
 from database import models
 
-DB_PATH = os.environ.get('DB_PATH')
+DB_PATH = config.DB_PATH
 DB = f'sqlite:///{DB_PATH}crypto.db'
 ENGINE = create_engine(DB)
-Session = sessionmaker(bind=ENGINE)
+session_factory = sessionmaker(bind=ENGINE)
+Session = scoped_session(session_factory)
 
 
 def create_db():

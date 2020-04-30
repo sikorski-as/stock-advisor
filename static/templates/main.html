@@ -23,9 +23,10 @@
             });
         }
 
-        function decision() {
+        function decision(currency) {
             console.log("decision");
-            jQuery.get("/decision");
+            console.log(currency)
+            jQuery.post("/decision", {symbol: currency});
         }
 
         function list() {
@@ -49,8 +50,8 @@
             Decision
 
             <ol>
-                {% for image in ids %}
-                <li><button class="btn btn-primary" onclick="decision()"><img src="https://s2.coinmarketcap.com/static/img/coins/64x64/{{image}}.png" alt="{{image}}"></button></li>
+                {% for currency in currencies %}
+                <li><button id="{{currency.name}}" class="btn btn-primary" onclick="decision(this.id)"  ><img src="https://s2.coinmarketcap.com/static/img/coins/64x64/{{currency.id}}.png" alt="{{currency.id}}"></button></li>
                 {% endfor %}
             </ol>
         </div>
