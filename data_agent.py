@@ -1,7 +1,8 @@
 import asyncio
 import itertools
 import json
-from time import perf_counter
+
+from aiohttp import ClientConnectorError
 
 import config
 
@@ -50,9 +51,16 @@ class DataAgent(agent.Agent):
         async def run(self):
             message = await self.receive(100)
             if message is not None:
-                print(f"Wczytuje dane historyczne dla {message.body}")
-                records = list(await self._get_yearly_currency_data(message.body, "PLN", self.YEARS))
-                print(f"Pobrano {len(records)} wyników dla {message.body}")
+                currency = message.body
+                print(f"Wczytuje dane historyczne dla {currency}")
+                records = list(await self._get_yearly_currency_data(currency, "PLN", self.YEARS))
+                if not records:
+                    records = self._get_info_from_db(currency).all()
+                    if not records:
+                        print("Polaczenie z siecia zawiodlo i nie ma tez zadnego backupu w bazie")
+                    else:
+                        print(f"Sa dane w bazie do wykorzystania")
+                print(f"Pobrano {len(records)} wyników dla {currency}")
                 print(records[::25])
 
         def _create_records(self, currency: str, info: iter):
@@ -79,10 +87,14 @@ class DataAgent(agent.Agent):
             else:
                 url = f"https://min-api.cryptocompare.com/data/v2/histoday?fsym={fcurr}&tsym={tcurr}&limit={limit}&api_key={config.API_KEY}"
             print(url)
-            async with session.get(url) as response:
-                data = json.loads(await response.text())
-                info = self._retrieve_information(data)
-                return self._create_records(fcurr, info)
+            try:
+                async with session.get(url) as response:
+                    data = json.loads(await response.text())
+                    info = self._retrieve_information(data)
+                    return self._create_records(fcurr, info)
+            except ClientConnectorError as e:
+                print("Brak połączenia z siecią!")
+                return []
 
         async def _get_yearly_currency_data(self, fcurr: str, tcurr: str, years: iter) -> iter:
             "bierze statystyki z kazdego dnia na przestrzeni lat"
@@ -91,6 +103,9 @@ class DataAgent(agent.Agent):
                 tasks = [self._get_historical_data(session, fcurr, tcurr, limit, timestamp) for timestamp in years]
                 records = await asyncio.gather(*tasks)
                 return itertools.chain.from_iterable(records)
+
+        def _get_info_from_db(self, currency):
+            return self.session.query(Record).filter(Record.currency == currency).order_by(Record.time)
 
     class CurrentDataBehaviour(CyclicBehaviour):
         def __init__(self, session):
@@ -107,10 +122,13 @@ class DataAgent(agent.Agent):
         async def _get_value(self, fcurr, tcurr="PLN"):
             "Pobiera aktualny kurs waluty"
             url = f"https://min-api.cryptocompare.com/data/price?fsym={fcurr}&tsyms={tcurr}"
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
-                    data = json.loads(await response.text())
-                    return data[tcurr]
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as response:
+                        data = json.loads(await response.text())
+                        return data[tcurr]
+            except ClientConnectorError as e:
+                print("Nie ma polaczenia z siecia!")
 
     class ListModelsBehaviour(CyclicBehaviour):
 

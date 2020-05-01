@@ -86,7 +86,6 @@ def load_sample_models():
 
 
 def load_2019_BTC_data():
-    session = builder.Session()
     timestamp = 1577750400
     limit = 364
     fcurr = "BTC"
@@ -98,6 +97,10 @@ def load_2019_BTC_data():
     save_data(records)
 
 
+def get_currency_info(currency):
+    records = session.query(Record).filter(Record.currency == currency).order_by(Record.time).all()
+    print(records)
+
 if __name__ == '__main__':
     # load_sample_models()
     # load_2019_BTC_data()
@@ -105,4 +108,5 @@ if __name__ == '__main__':
     # get_historical_data(fcurr="BTC", tcurr="PLN", limit=2, timestamp=1554076800)
     # get_yearly_currency_data("BTC", "PLN", YEARS)
     # get_current_data("BTC", "PLN")
-    print(get_currency_with_models())
+    # print(get_currency_with_models())
+    get_currency_info("ETH")
