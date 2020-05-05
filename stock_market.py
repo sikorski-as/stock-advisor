@@ -91,10 +91,8 @@ def load_2019_BTC_data():
     fcurr = "BTC"
     tcurr = "PLN"
     btc_info = _get_historical_data(fcurr, tcurr, limit, timestamp)
-    records = [Record(currency="BTC", time=time, high=high, low=low, open=open, close=close)
-               for time, high, low, open, close in btc_info]
 
-    save_data(records)
+    save_data(btc_info)
 
 
 def get_currency_info(currency):
@@ -102,11 +100,11 @@ def get_currency_info(currency):
     print(records)
 
 if __name__ == '__main__':
-    # load_sample_models()
-    # load_2019_BTC_data()
+    load_sample_models()
+    load_2019_BTC_data()
 
     # get_historical_data(fcurr="BTC", tcurr="PLN", limit=2, timestamp=1554076800)
     # get_yearly_currency_data("BTC", "PLN", YEARS)
     # get_current_data("BTC", "PLN")
     # print(get_currency_with_models())
-    get_currency_info("ETH")
+    # get_currency_info("ETH")
