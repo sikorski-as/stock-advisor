@@ -61,3 +61,53 @@ def create_message(to: str, performative: str, ontology: str, body: str) -> Mess
     message.set_metadata("ontology", ontology)
     message.body = body
     return message
+
+
+def make_template(**kwargs) -> Template:
+    """
+    Makes template with given metadata.
+
+    :param kwargs: keyword='value' pairs for template's metadata dict
+
+    Example:
+        ``decision_request_template = make_template(performative='request', what='decision', currency='BTC')``
+    """
+    return Template(metadata=kwargs)
+
+
+def message_from_template(template: Template, **kwargs) -> Message:
+    """
+    Makes a messsage from a template.
+
+    :param template: template to create message from
+    :param kwargs: fields of the message to overwrite the template ones
+    :return: message created from template
+
+    Example:
+        ``msg = message_from_template(decision_request_template, to='decision_agent@domain')``
+    """
+
+    def from_template_or_kwargs(attrname):
+        try:
+            return kwargs[attrname]
+        except KeyError:
+            return getattr(template, attrname, None)
+
+    return Message(
+        sender=from_template_or_kwargs('sender'),
+        to=from_template_or_kwargs('to'),
+        body=from_template_or_kwargs('body'),
+        thread=from_template_or_kwargs('thread'),
+        metadata=from_template_or_kwargs('metadata')
+    )
+
+
+def reply_from_template(msg: Message, template: Template) -> Message:
+    """
+    Creates a message from a template and switches sender and receipent of the original message.
+
+    :param msg: message to make reply for
+    :param template: template of the messsage
+    :return: message created from template with switched sender and receipent
+    """
+    return message_from_template(template, sender=str(msg.to), to=str(msg.sender), thread=msg.thread)
