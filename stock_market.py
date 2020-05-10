@@ -6,7 +6,6 @@ import json
 import database.builder as builder
 from database.models import Record, Model
 
-
 "Epoch time dla lat 2014-2019, gdzie pierwszy element to 31.12.2014"
 YEARS = [1419984000, 1451520000, 1483142400, 1514678400, 1546214400, 1577750400]
 
@@ -99,6 +98,22 @@ def get_currency_info(currency):
     records = session.query(Record).filter(Record.currency == currency).order_by(Record.time).all()
     print(records)
 
+
+def update_model():
+    currency = "LTC"
+    long_mean = 65
+    short_mean = 20
+    db_model = session.query(Model).filter(Model.currency == currency).one_or_none()
+    if db_model:
+        db_model.short_mean = short_mean
+        db_model.long_mean = long_mean
+    else:
+        model = Model(currency=currency, short_mean=short_mean, long_mean=long_mean)
+        session.add(model)
+    session.commit()
+    print(db_model)
+
+
 if __name__ == '__main__':
     load_sample_models()
     load_2019_BTC_data()
@@ -108,3 +123,4 @@ if __name__ == '__main__':
     # get_current_data("BTC", "PLN")
     # print(get_currency_with_models())
     # get_currency_info("ETH")
+    # update_model()

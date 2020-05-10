@@ -3,7 +3,9 @@ from time import sleep
 from aioxmpp import PresenceShow
 from spade import agent
 from spade.behaviour import OneShotBehaviour, CyclicBehaviour
-from spade.template import Template
+
+import config
+import tools
 
 
 class StrategyAgent(agent.Agent):
@@ -27,16 +29,14 @@ class StrategyAgent(agent.Agent):
             sleep(30)
             print("train done")
             give_decision_behaviour = StrategyAgent.GiveDecisionBehaviour()
-            give_decision_template = Template()
-            give_decision_template.set_metadata("performative", "request")
-            give_decision_template.set_metadata("ontology", "give_decision")
-            self.agent.add_behaviour(give_decision_behaviour, give_decision_behaviour)
+            give_decision_template = tools.create_template("request", "give_decision")
+            self.agent.add_behaviour(give_decision_behaviour, give_decision_template)
 
     class GiveDecisionBehaviour(CyclicBehaviour):
         async def on_start(self):
             self.presence.set_available(show=PresenceShow.CHAT)
 
         async def run(self):
-            message = await self.receive(100)
+            message = await self.receive(config.timeout)
             if message is not None:
                 print("decision")

@@ -2,6 +2,9 @@ import json
 import logging
 import sys
 
+from spade.message import Message
+from spade.template import Template
+
 
 def to_json(data: dict) -> str:
     return json.dumps(data)
@@ -43,3 +46,18 @@ def make_logger(name: str, level=None, filename: str = None, format: str = None)
         log.setLevel(logging.DEBUG)
 
     return log
+
+
+def create_template(performative: str, ontology: str) -> Template:
+    template = Template()
+    template.set_metadata("performative", performative)
+    template.set_metadata("ontology", ontology)
+    return template
+
+
+def create_message(to: str, performative: str, ontology: str, body: str) -> Message:
+    message = Message(to=to)
+    message.set_metadata("performative", performative)
+    message.set_metadata("ontology", ontology)
+    message.body = body
+    return message

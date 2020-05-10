@@ -2,14 +2,14 @@ import asyncio
 import itertools
 import json
 
+import jsonpickle as jsonpickle
 from aiohttp import ClientConnectorError
 
 import config
 
 from spade import agent
 from spade.behaviour import OneShotBehaviour, CyclicBehaviour
-from spade.template import Template
-
+import tools
 from database import builder
 from database.models import Model, Record
 import aiohttp
@@ -25,20 +25,20 @@ class DataAgent(agent.Agent):
 
         print("Hello World! I'm agent {}".format(str(self.jid)))
 
-        history_data_template = Template()
-        history_data_template.set_metadata("performative", "inform")
-        history_data_template.set_metadata("ontology", "history")
+        history_data_template = tools.create_template("inform", "history")
         self.add_behaviour(self.HistoryDataBehaviour(self.session), history_data_template)
 
-        current_data_template = Template()
-        current_data_template.set_metadata("performative", "inform")
-        current_data_template.set_metadata("ontology", "current")
+        current_data_template = tools.create_template("inform", "current")
         self.add_behaviour(self.CurrentDataBehaviour(self.session), current_data_template)
 
-        list_models_template = Template()
-        list_models_template.set_metadata("performative", "inform")
-        list_models_template.set_metadata("ontology", "list")
+        list_models_template = tools.create_template("inform", "list")
         self.add_behaviour(self.ListModelsBehaviour(self.session), list_models_template)
+
+        get_model_template = tools.create_template("inform", "getModel")
+        self.add_behaviour(self.GetModelBehaviour(self.session), get_model_template)
+
+        save_model_template = tools.create_template("inform", "saveModel")
+        self.add_behaviour(self.SaveModelBehaviour(self.session), save_model_template)
 
     class HistoryDataBehaviour(CyclicBehaviour):
         "Epoch time dla lat 2014-2019, gdzie pierwszy element to 31.12.2014"
@@ -49,7 +49,7 @@ class DataAgent(agent.Agent):
             self.session = session
 
         async def run(self):
-            message = await self.receive(100)
+            message = await self.receive(config.timeout)
             if message is not None:
                 currency = message.body
                 print(f"Wczytuje dane historyczne dla {currency}")
@@ -113,11 +113,15 @@ class DataAgent(agent.Agent):
             self.session = session
 
         async def run(self):
-            message = await self.receive(100)
+            message = await self.receive(config.timeout)
             if message is not None:
-                print(f"Wczytuje aktualny kurs dla {message.body}")
-                value = await self._get_value(message.body)
+                currency = message.body
+                print(f"Wczytuje aktualny kurs dla {currency}")
+                value = await self._get_value(currency)
                 print(f"Aktualny kurs to {value}")
+                message = tools.create_message("interface_agent@127.0.0.1", "inform", "decision",
+                                               jsonpickle.encode((currency, value)))
+                await self.send(message)
 
         async def _get_value(self, fcurr, tcurr="PLN"):
             "Pobiera aktualny kurs waluty"
@@ -137,11 +141,63 @@ class DataAgent(agent.Agent):
             self.session = session
 
         async def run(self):
-            message = await self.receive(100)
+            message = await self.receive(10)
             if message is not None:
                 models_available = self._get_currency_with_models()
                 print(f"Dostępne modele to: {models_available}")
+                message = tools.create_message("interface_agent@127.0.0.1", "inform", "list",
+                                               jsonpickle.encode(models_available))
+                await self.send(message)
 
         def _get_currency_with_models(self) -> iter:
             "Wyciaga z bazy wszystkie kryptowaluty posiadajace wytrenowane modele"
             return [row.currency for row in self.session.query(Model).all()]
+
+    class GetModelBehaviour(CyclicBehaviour):
+        """
+            Message body should contain name of currency
+            Example message.body = "BTC"
+        """
+
+        def __init__(self, session):
+            super().__init__()
+            self.session = session
+
+        async def run(self):
+            message = await self.receive(10)
+            if message is not None:
+                currency = message.body
+                model = self.session.query(Model).filter(Model.currency == currency).one_or_none()
+                print(f"Model dla waluty {currency} to {model.short_mean, model.long_mean}")
+
+    class SaveModelBehaviour(CyclicBehaviour):
+        """
+            Message body should contain name and short_mean and long_mean
+            Example model = {
+                "currency": "BTC",
+                "short_mean": 20,
+                "long_mean": 50
+            }
+            message.body = tools.to_json(model)
+        """
+
+        def __init__(self, session):
+            super().__init__()
+            self.session = session
+
+        async def run(self):
+            message = await self.receive(10)
+            if message is not None:
+                model_info = tools.from_json(message.body)
+                self.save_model(**model_info)
+                print(f"Zapisano model {model_info['currency']}")
+
+        def save_model(self, currency, short_mean, long_mean):
+            db_model = self.session.query(Model).filter(Model.currency == currency).one_or_none()
+            if db_model:
+                db_model.short_mean = short_mean
+                db_model.long_mean = long_mean
+            else:
+                model = Model(currency=currency, short_mean=short_mean, long_mean=long_mean)
+                self.session.add(model)
+            self.session.commit()

@@ -33,10 +33,37 @@
             console.log("list");
             jQuery.get("/list");
         }
+
+        function retrieveTrain() {
+            console.log("train");
+            const symbol = $("#retrieveSymbol").val();
+            console.log($("#retrieveSymbol").val());
+            jQuery.post("/retrieve/train",  {symbol: symbol}).done(function(data) {
+                console.log(data)
+            });
+        }
+
+        function retrieveDecision(currency) {
+            console.log("decision");
+            console.log(currency)
+            jQuery.post("/retrieve/decision", {symbol: currency}, function(res){
+                console.log(res);
+                $("#response").html( $("#response").html() + "<br\>" + "Decision: " + res);
+            });
+        }
+
+        function retrieveList() {
+            console.log("list");
+            jQuery.getJSON("/retrieve/list", function(res){
+                console.log(res);
+                $("#response").html( $("#response").html() + "<br\>" + "List: " + res);
+            });
+        }
     </script>
 </head>
 <body>
 <div class="container">
+    <p style="text-align: center; font-size: 20px"> Call </p>
     <div class="row align-items-center">
         <div class="col-sm text-center">
             Train
@@ -59,6 +86,33 @@
             <button class="btn btn-primary" onclick="list()">List</button>
         </div>
     </div>
+</div>
+
+<div class="retrieve_container">
+<p style="text-align: center; font-size: 20px"> Retrieve </p>
+    <div class="row align-items-center">
+        <div class="col-sm text-center">
+            Train
+            <div class="form-group">
+                Enter currency symbol:
+                <input id="retrieveSymbol" type="text" class="form-control">
+                <button class="btn btn-primary" onclick="retrieveTrain()">Train</button>
+            </div>
+        </div>
+        <div class="col-sm text-center">
+            Decision
+
+            <ol>
+                {% for currency in currencies %}
+                <li><button id="{{currency.name}}" class="btn btn-primary" onclick="retrieveDecision(this.id)"  ><img src="https://s2.coinmarketcap.com/static/img/coins/64x64/{{currency.id}}.png" alt="{{currency.id}}"></button></li>
+                {% endfor %}
+            </ol>
+        </div>
+        <div class="col-sm text-center">
+            <button class="btn btn-primary" onclick="retrieveList()">List</button>
+        </div>
+    </div>
+    <p id="response" style="text-align:center"></p>
 </div>
 </body>
 </html>
