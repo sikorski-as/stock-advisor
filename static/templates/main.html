@@ -18,47 +18,77 @@
             console.log("train");
             const symbol = $("#symbol").val();
             console.log($("#symbol").val());
-            jQuery.post("/train",  {symbol: symbol}).done(function(data) {
-                console.log(data)
+            jQuery.post("/train", {symbol: symbol}).done(function (res) {
+                console.log(res);
+                let response = jQuery.parseJSON(res);
+                $("#logs").find('tbody').append("<tr>\n" +
+                    "<td> " + "Train" + "</td>\n" +
+                    "<td> " + response.body + "</td>\n" +
+                    "<td> " + response.date +  " </td>\n" +
+                    "<td> " + response.status +  "</td>\n" +
+                    "        </tr>");
             });
         }
 
         function decision(currency) {
             console.log("decision");
             console.log(currency)
-            jQuery.post("/decision", {symbol: currency});
+            jQuery.post("/decision", {symbol: currency}, function (res) {
+                {#$("#response").html($("#response").html() + "<br\>" + "Decision: " + res);#}
+                console.log(res);
+                let response = jQuery.parseJSON(res);
+                $("#logs").find('tbody').append("<tr>\n" +
+                    "<td> " + "Decision" + "</td>\n" +
+                    "<td> " + response.body + "</td>\n" +
+                    "<td> " + response.date +  " </td>\n" +
+                    "<td> " + response.status +  "</td>\n" +
+                    "        </tr>");
+            });
         }
 
         function list() {
             console.log("list");
-            jQuery.get("/list");
-        }
-
-        function retrieveTrain() {
-            console.log("train");
-            const symbol = $("#retrieveSymbol").val();
-            console.log($("#retrieveSymbol").val());
-            jQuery.post("/retrieve/train",  {symbol: symbol}).done(function(data) {
-                console.log(data)
-            });
-        }
-
-        function retrieveDecision(currency) {
-            console.log("decision");
-            console.log(currency)
-            jQuery.post("/retrieve/decision", {symbol: currency}, function(res){
+            jQuery.getJSON("/list", function (res) {
+                {#$("#response").html($("#response").html() + "<br\>" + "List: " + res);#}
                 console.log(res);
-                $("#response").html( $("#response").html() + "<br\>" + "Decision: " + res);
+                let response = jQuery.parseJSON(res);
+                $("#logs").find('tbody').append("<tr>\n" +
+                    "<td> " + "List" + "</td>\n" +
+                    "<td> " + response.body + "</td>\n" +
+                    "<td> " + response.date +  " </td>\n" +
+                    "<td> " + response.status +  "</td>\n" +
+                    "        </tr>");
             });
+        }
+        function clearTable(){
+            $("#logs tbody tr").remove();
         }
 
-        function retrieveList() {
-            console.log("list");
-            jQuery.getJSON("/retrieve/list", function(res){
-                console.log(res);
-                $("#response").html( $("#response").html() + "<br\>" + "List: " + res);
-            });
-        }
+        {#function retrieveTrain() {#}
+        {#    console.log("train");#}
+        {#    const symbol = $("#retrieveSymbol").val();#}
+        {#    console.log($("#retrieveSymbol").val());#}
+        {#    jQuery.post("/retrieve/train", {symbol: symbol}).done(function (data) {#}
+        {#        console.log(data)#}
+        {#    });#}
+        {#}#}
+        {##}
+        {#function retrieveDecision(currency) {#}
+        {#    console.log("decision");#}
+        {#    console.log(currency)#}
+        {#    jQuery.post("/retrieve/decision", {symbol: currency}, function (res) {#}
+        {#        console.log(res);#}
+        {#        $("#response").html($("#response").html() + "<br\>" + "Decision: " + res);#}
+        {#    });#}
+        {#}#}
+        {##}
+        {#function retrieveList() {#}
+        {#    console.log("list");#}
+        {#    jQuery.getJSON("/retrieve/list", function (res) {#}
+        {#        console.log(res);#}
+        {#        $("#response").html($("#response").html() + "<br\>" + "List: " + res);#}
+        {#    });#}
+        {#}#}
     </script>
 </head>
 <body>
@@ -78,7 +108,11 @@
 
             <ol>
                 {% for currency in currencies %}
-                <li><button id="{{currency.name}}" class="btn btn-primary" onclick="decision(this.id)"  ><img src="https://s2.coinmarketcap.com/static/img/coins/64x64/{{currency.id}}.png" alt="{{currency.id}}"></button></li>
+                    <li>
+                        <button id="{{ currency.name }}" class="btn btn-primary" onclick="decision(this.id)"><img
+                                src="https://s2.coinmarketcap.com/static/img/coins/64x64/{{ currency.id }}.png"
+                                alt="{{ currency.id }}"></button>
+                    </li>
                 {% endfor %}
             </ol>
         </div>
@@ -87,32 +121,53 @@
         </div>
     </div>
 </div>
+{##}
+{#<div class="retrieve_container">#}
+{#    <p style="text-align: center; font-size: 20px"> Retrieve </p>#}
+{#    <div class="row align-items-center">#}
+{#        <div class="col-sm text-center">#}
+{#            Train#}
+{#            <div class="form-group">#}
+{#                Enter currency symbol:#}
+{#                <input id="retrieveSymbol" type="text" class="form-control">#}
+{#                <button class="btn btn-primary" onclick="retrieveTrain()">Train</button>#}
+{#            </div>#}
+{#        </div>#}
+{#        <div class="col-sm text-center">#}
+{#            Decision#}
+{##}
+{#            <ol>#}
+{#                {% for currency in currencies %}#}
+{#                    <li>#}
+{#                        <button id="{{ currency.name }}" class="btn btn-primary" onclick="retrieveDecision(this.id)">#}
+{#                            <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/{{ currency.id }}.png"#}
+{#                                 alt="{{ currency.id }}"></button>#}
+{#                    </li>#}
+{#                {% endfor %}#}
+{#            </ol>#}
+{#        </div>#}
+{#        <div class="col-sm text-center">#}
+{#            <button class="btn btn-primary" onclick="retrieveList()">List</button>#}
+{#        </div>#}
+{#    </div>#}
+{#    <p id="response" style="text-align:center"></p>#}
+{#</div>#}
 
-<div class="retrieve_container">
-<p style="text-align: center; font-size: 20px"> Retrieve </p>
-    <div class="row align-items-center">
-        <div class="col-sm text-center">
-            Train
-            <div class="form-group">
-                Enter currency symbol:
-                <input id="retrieveSymbol" type="text" class="form-control">
-                <button class="btn btn-primary" onclick="retrieveTrain()">Train</button>
-            </div>
-        </div>
-        <div class="col-sm text-center">
-            Decision
+<button type="button" class="btn btn-danger" onclick="clearTable()"> Clear</button>
+<div style="margin-left:10%; margin-right: 10%">
+    <table id="logs" class="table table-striped">
+        <thead>
+        <tr>
+            <th scope="col">Type</th>
+            <th scope="col">Body</th>
+            <th scope="col">Time</th>
+            <th scope="col">Status</th>
+        </tr>
+        </thead>
+        <tbody>
 
-            <ol>
-                {% for currency in currencies %}
-                <li><button id="{{currency.name}}" class="btn btn-primary" onclick="retrieveDecision(this.id)"  ><img src="https://s2.coinmarketcap.com/static/img/coins/64x64/{{currency.id}}.png" alt="{{currency.id}}"></button></li>
-                {% endfor %}
-            </ol>
-        </div>
-        <div class="col-sm text-center">
-            <button class="btn btn-primary" onclick="retrieveList()">List</button>
-        </div>
-    </div>
-    <p id="response" style="text-align:center"></p>
+        </tbody>
+    </table>
 </div>
 </body>
 </html>

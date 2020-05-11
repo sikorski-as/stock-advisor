@@ -7,7 +7,7 @@ from spade.template import Template
 
 
 def to_json(data: dict) -> str:
-    return json.dumps(data)
+    return json.dumps(data, indent=4, sort_keys=True, default=str)
 
 
 def from_json(data: str) -> dict:

@@ -1,4 +1,4 @@
-from inteface_agent import InterfaceAgent
+from interface_agent import InterfaceAgent
 
 
 def main():

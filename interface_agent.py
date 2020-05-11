@@ -1,3 +1,5 @@
+from copy import copy
+
 import jsonpickle
 from spade import agent
 from spade.behaviour import OneShotBehaviour, CyclicBehaviour
@@ -11,9 +13,9 @@ from decision_agent import DecisionAgent
 
 class InterfaceAgent(agent.Agent):
     operations = {
-        "Train": {},
-        "Decision": {},
-        "List": None
+        config.TRAIN_OPERATION: {},
+        config.DECISION_OPERATION: {},
+        config.LIST_OPERATION: None
     }
 
     async def main_controller(self, request):
@@ -32,48 +34,68 @@ class InterfaceAgent(agent.Agent):
             }
         ]}
 
-    async def test_controller(self, request):
-        print("Hello, world!")
-
     async def train_controller(self, request):
         print("Train")
         symbol = (await request.post())["symbol"]
         print(symbol)
+        resp = self.operations["Train"].get(symbol, None)
+        if not resp:
+            resp = response.Response()
+            self.operations["Train"][symbol] = resp
         train_behaviour = self.RequestTrainBehaviour(symbol)
         self.add_behaviour(train_behaviour)
+        return resp.get_json()
 
     async def decision_controller(self, request):
         print("Decision")
         symbol = (await request.post())["symbol"]
         print(symbol)
-        operation = self.operations["Decision"].get(symbol, None)
-        if not operation:
-            self.operations["Decision"][symbol] = response.Response()
-        decision_behaviour = self.RequestDecisionBehaviour(symbol)
-        self.add_behaviour(decision_behaviour)
+        resp = self.operations[config.DECISION_OPERATION].get(symbol, None)
+        if not resp:
+            resp = response.Response()
+            self.operations[config.DECISION_OPERATION][symbol] = resp
+            decision_behaviour = self.RequestDecisionBehaviour(symbol)
+            self.add_behaviour(decision_behaviour)
+            return resp.get_json()
+        else:
+            prev_resp: response.Response = copy(resp)
+            if prev_resp.status == response.Status.DONE:
+                resp.status = response.Status.ACTIVE
+                decision_behaviour = self.RequestDecisionBehaviour(symbol)
+                self.add_behaviour(decision_behaviour)
+            return prev_resp.get_json()
 
     async def list_controller(self, request):
         print("List")
-        if not self.operations["List"]:
-            self.operations["List"] = response.Response()
-        else:
-            print(self.operations["List"])
-        request_list_behaviour = self.RequestListBehaviour()
-        self.add_behaviour(request_list_behaviour)
+        resp = self.operations[config.LIST_OPERATION]
 
-    async def retrieve_decision_controller(self, request):
-        symbol = (await request.post())["symbol"]
-        decision = self.operations["Decision"].get(symbol, None)
-        if decision:
-            return decision.get()
+        if not resp:
+            resp = response.Response()
+            self.operations[config.LIST_OPERATION] = resp
+            request_list_behaviour = self.RequestListBehaviour()
+            self.add_behaviour(request_list_behaviour)
+            return resp.get_json()
         else:
-            return tools.to_json({"info": f"Nie było prosby o wygenerowanie danych dla {symbol}"})
+            prev_resp: response.Response = copy(resp)
+            if resp.status == response.Status.DONE:
+                resp.status = response.Status.ACTIVE
+                request_list_behaviour = self.RequestListBehaviour()
+                self.add_behaviour(request_list_behaviour)
+            return prev_resp.get_json()
 
-    async def retrieve_list_controller(self, request):
-        if self.operations["List"]:
-            return self.operations["List"].get()
-        else:
-            return tools.to_json({"info": "Nie bylo prosby o pobranie listy"})
+    # async def retrieve_decision_controller(self, request):
+    #     symbol = (await request.post())["symbol"]
+    #     decision = self.operations[config.DECISION_OPERATION].get(symbol, None)
+    #     if decision:
+    #         return decision.get_json()
+    #     else:
+    #         return tools.to_json({"info": f"Nie było prosby o wygenerowanie danych dla {symbol}"})
+    #
+    # async def retrieve_list_controller(self, request):
+    #     if self.operations[config.LIST_OPERATION]:
+    #         return self.operations[config.LIST_OPERATION].get_json()
+    #     else:
+    #         return tools.to_json({"info": "Nie bylo prosby o pobranie listy"})
 
     async def spawn_agents(self):
         data_agent = DataAgent("data_agent@127.0.0.1", "data_agent")
@@ -87,11 +109,10 @@ class InterfaceAgent(agent.Agent):
         self.web.add_post("/train", self.train_controller, None)
         self.web.add_post("/decision", self.decision_controller, None)
         self.web.add_get("/list", self.list_controller, None)
-        self.web.add_post("/retrieve/train", self.train_controller, None)
-        self.web.add_post("/retrieve/decision", self.retrieve_decision_controller, None)
-        self.web.add_get("/retrieve/list", self.retrieve_list_controller, None)
+        # self.web.add_post("/retrieve/train", self.train_controller, None)
+        # self.web.add_post("/retrieve/decision", self.retrieve_decision_controller, None)
+        # self.web.add_get("/retrieve/list", self.retrieve_list_controller, None)
         self.web.add_get("", self.main_controller, "main.html")
-        self.web.add_get("/test", self.test_controller, None)
 
         decision_template = tools.create_template("inform", "decision")
         self.add_behaviour(self.ResponseDecisionBehaviour(self.operations), decision_template)
@@ -126,7 +147,6 @@ class InterfaceAgent(agent.Agent):
             await self.send(message)
 
     class ResponseDecisionBehaviour(CyclicBehaviour):
-        OPERATION_KEY = "Decision"
 
         def __init__(self, operation_dict: dict):
             super().__init__()
@@ -136,13 +156,12 @@ class InterfaceAgent(agent.Agent):
             message = await self.receive(config.timeout)
             if message is not None:
                 currency, value = jsonpickle.decode(message.body)
-                operation = self.operations[self.OPERATION_KEY][currency]
+                operation = self.operations[config.DECISION_OPERATION][currency]
                 operation.body = value
                 operation.status = response.Status.DONE
                 print(operation)
 
     class ResponseListBehaviour(CyclicBehaviour):
-        OPERATION_KEY = "List"
 
         def __init__(self, operation_dict: dict):
             super().__init__()
@@ -151,7 +170,7 @@ class InterfaceAgent(agent.Agent):
         async def run(self):
             message = await self.receive(config.timeout)
             if message is not None:
-                operation = self.operations[self.OPERATION_KEY]
+                operation = self.operations[config.LIST_OPERATION]
                 operation.body = jsonpickle.decode(message.body)
                 operation.status = response.Status.DONE
                 print(operation)
