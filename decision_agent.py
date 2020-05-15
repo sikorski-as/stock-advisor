@@ -50,3 +50,8 @@ class DecisionAgent(agent.Agent):
                 print(f"Decision {message.body}")
                 message = tools.create_message("data_agent@127.0.0.1", "inform", "current", currency)
                 await self.send(message)
+
+
+if __name__ == '__main__':
+    agent = DecisionAgent('decision_agent@localhost', 'decision_agent')
+    agent.start()
