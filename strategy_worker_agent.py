@@ -8,10 +8,13 @@ from protocol import request_cost_computation
 
 
 class StrategyAgentWorker(agent.Agent):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.log = tools.make_logger(self.jid)
+
     async def setup(self):
         self.log.debug('Starting!')
         self.add_behaviour(StrategyAgentWorker.MasterConversation(), request_cost_computation)
-        self.log = tools.make_logger(self.jid)
 
     class MasterConversation(CyclicBehaviour):
         async def run(self):
@@ -22,8 +25,8 @@ class StrategyAgentWorker(agent.Agent):
                 reply.metadata = dict(performative='reply')
                 reply.body = tools.to_json([0] * len(data))
                 await asyncio.sleep(5)
+                self.agent.log.debug('Sending reply!')
                 await self.send(reply)
-                self.agent.log.debug('Reply sent!')
 
 
 if __name__ == '__main__':

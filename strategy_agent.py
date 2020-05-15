@@ -13,9 +13,10 @@ from spade.template import Template
 
 import config
 import tools
-from tools import make_logger, message_from_template
-from protocol import request_decision_template, give_positive_decision_template, request_cost_computation
 from strategy_worker_agent import StrategyAgentWorker
+from tools import make_logger, message_from_template
+from protocol import request_decision_template, give_positive_decision_template, request_cost_computation, \
+    give_negative_decision_template
 
 
 class StrategyAgent(agent.Agent):
@@ -25,14 +26,15 @@ class StrategyAgent(agent.Agent):
         self.currency_symbol = currency_symbol
         self.log = make_logger(self.jid)
         self.training_behaviour = None
+        self.has_strategy = False
 
     async def setup(self):
         self.log.debug('Starting!')
-        self.presence.approve_all = True
-        self.training_behaviour = self.TrainBehaviour()
-        self.add_behaviour(self.training_behaviour)
         await StrategyAgentWorker('strategy_agent_worker1@localhost', 'strategy_agent_worker1').start()
         await StrategyAgentWorker('strategy_agent_worker2@localhost', 'strategy_agent_worker2').start()
+        self.training_behaviour = self.TrainBehaviour()
+        self.add_behaviour(self.training_behaviour)
+        self.add_behaviour(StrategyAgent.GiveDecisionBehaviour(), request_decision_template)
 
     class TrainBehaviour(OneShotBehaviour):
         def __init__(self, *args, **kwargs):
@@ -71,7 +73,6 @@ class StrategyAgent(agent.Agent):
                 population = population[:population_size]
 
             self.agent.log.debug('Training done!')
-            self.agent.add_behaviour(StrategyAgent.GiveDecisionBehaviour(), request_decision_template)
 
         async def compute_cost_function(self, population):
             chunks = tools.split_into_chunks(population, len(self.workers))
@@ -136,9 +137,16 @@ class StrategyAgent(agent.Agent):
             msg = await self.receive(timeout=config.timeout)
             if msg is not None:
                 self.agent.log.debug('I got request_decision_template message!')
-                reply = message_from_template(give_positive_decision_template, to=str(msg.sender))
-                await self.send(reply)
-                self.agent.log.debug('I sent give_positive_decision_template message!')
+                if self.agent.has_strategy:
+                    # jest wytrenowany model, odsyłamy decyzję
+                    reply = message_from_template(give_positive_decision_template, to=str(msg.sender))
+                    await self.send(reply)
+                    self.agent.log.debug('I sent give_positive_decision_template message!')
+                else:
+                    # trwa trening, nie można dać decyzji
+                    reply = message_from_template(give_negative_decision_template, to=str(msg.sender))
+                    await self.send(reply)
+                    self.agent.log.debug('I sent give_negative_decision_template message!')
 
 
 if __name__ == '__main__':
