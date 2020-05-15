@@ -15,6 +15,7 @@ import config
 import tools
 from tools import make_logger, message_from_template
 from protocol import request_decision_template, give_positive_decision_template, request_cost_computation
+from strategy_worker_agent import StrategyAgentWorker
 
 
 class StrategyAgent(agent.Agent):
@@ -30,6 +31,8 @@ class StrategyAgent(agent.Agent):
         self.presence.approve_all = True
         self.training_behaviour = self.TrainBehaviour()
         self.add_behaviour(self.training_behaviour)
+        await StrategyAgentWorker('strategy_agent_worker1@localhost', 'strategy_agent_worker1').start()
+        await StrategyAgentWorker('strategy_agent_worker2@localhost', 'strategy_agent_worker2').start()
 
     class TrainBehaviour(OneShotBehaviour):
         def __init__(self, *args, **kwargs):
@@ -37,7 +40,8 @@ class StrategyAgent(agent.Agent):
             self.computed_cost_function = []
             self.computed_cost_function_arrived = asyncio.Semaphore(value=0)
             self.workers = [
-                'strategy_agent_worker@localhost'
+                'strategy_agent_worker1@localhost',
+                'strategy_agent_worker2@localhost',
             ]
 
         async def on_start(self):

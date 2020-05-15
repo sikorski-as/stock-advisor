@@ -9,7 +9,7 @@ from protocol import request_cost_computation
 
 class StrategyAgentWorker(agent.Agent):
     async def setup(self):
-        print("Hello World! I'm agent {}".format(str(self.jid)))
+        self.log.debug('Starting!')
         self.add_behaviour(StrategyAgentWorker.MasterConversation(), request_cost_computation)
         self.log = tools.make_logger(self.jid)
 
@@ -23,9 +23,9 @@ class StrategyAgentWorker(agent.Agent):
                 reply.body = tools.to_json([0] * len(data))
                 await asyncio.sleep(5)
                 await self.send(reply)
-                self.agent.log.info('Reply sent!')
+                self.agent.log.debug('Reply sent!')
 
 
 if __name__ == '__main__':
-    agent = StrategyAgentWorker('strategy_agent_worker@localhost', 'strategy_agent_worker1')
+    agent = StrategyAgentWorker('strategy_agent_worker1@localhost', 'strategy_agent_worker1')
     agent.start()
