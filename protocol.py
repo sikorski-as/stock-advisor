@@ -5,6 +5,11 @@ from tools import make_template
 example_template = Template()
 
 #
+# General
+#
+ping_template = make_template(performative='ping')
+
+#
 # Data Agent (DA)
 #
 ...

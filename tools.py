@@ -123,7 +123,7 @@ def make_uuid() -> str:
     return str(uuid.uuid1())
 
 
-def split_into_chunks(alist: List, nchunks: int, as_ranges=False) -> List[List]:
+def split_into_chunks(alist: List, nchunks: int) -> List[List]:
     """
     Splits list into equal or almost equal parts.
     If sequence cannot be divided into equal parts, the last parts will be shorter
