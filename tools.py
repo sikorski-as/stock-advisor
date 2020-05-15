@@ -1,16 +1,19 @@
 import json
 import logging
 import sys
+import uuid
+from itertools import tee
+from typing import List, Dict, Tuple
 
 from spade.message import Message
 from spade.template import Template
 
 
-def to_json(data: dict) -> str:
+def to_json(data) -> str:
     return json.dumps(data, indent=4, sort_keys=True, default=str)
 
 
-def from_json(data: str) -> dict:
+def from_json(data: str):
     return json.loads(data)
 
 
@@ -111,3 +114,31 @@ def reply_from_template(msg: Message, template: Template) -> Message:
     :return: message created from template with switched sender and receipent
     """
     return message_from_template(template, sender=str(msg.to), to=str(msg.sender), thread=msg.thread)
+
+
+def make_uuid() -> str:
+    """
+    Generates an unique ID (for a conversation ID for example).
+    """
+    return str(uuid.uuid1())
+
+
+def split_into_chunks(alist: List, nchunks: int, as_ranges=False) -> List[List]:
+    """
+    Splits list into equal or almost equal parts.
+    If sequence cannot be divided into equal parts, the last parts will be shorter
+
+    :param alist: list to split
+    :param nchunks: number of chunks to split list to
+    :param as_ranges: True if ranges of a list should be returned instead of list
+    :return: list of chunks
+    """
+
+    def chunks(alist, nchunks):
+        d, r = divmod(len(alist), nchunks)
+        for i in range(nchunks):
+            si = (d + 1) * (i if i < r else r) + d * (0 if i < r else i - r)
+            ei = si + (d + 1 if i < r else d)
+            yield alist[si:ei]
+
+    return list(chunks(alist, nchunks))

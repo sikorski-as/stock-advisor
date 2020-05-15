@@ -37,4 +37,6 @@ give_negative_decision_template = give_decision_template | make_template(answer=
 #
 # Strategy Agent Worker (SAW)
 #
-...
+request_cost_computation = make_template(performative='request', what='cost function')
+
+please_retransfer = make_template(performative='please', what='retransfer cost function')
