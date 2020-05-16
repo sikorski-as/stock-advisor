@@ -27,7 +27,7 @@ class StrategyAgent(agent.Agent):
     async def setup(self):
         self.log.debug('Starting!')
         await StrategyAgentWorker('strategy_agent_worker1@localhost', 'strategy_agent_worker1').start()
-        # await StrategyAgentWorker('strategy_agent_worker2@localhost', 'strategy_agent_worker2', bad=True).start()
+        await StrategyAgentWorker('strategy_agent_worker2@localhost', 'strategy_agent_worker2').start()
         self.training_behaviour = self.TrainBehaviour()
         self.add_behaviour(self.training_behaviour)
         self.add_behaviour(StrategyAgent.GiveDecisionBehaviour(), request_decision_template)
