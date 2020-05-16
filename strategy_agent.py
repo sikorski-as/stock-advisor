@@ -26,8 +26,10 @@ class StrategyAgent(agent.Agent):
 
     async def setup(self):
         self.log.debug('Starting!')
-        await StrategyAgentWorker(f'strategy_agent_worker1@{domain}', 'strategy_agent_worker1', self.currency_symbol).start(auto_register=True)
-        await StrategyAgentWorker(f'strategy_agent_worker2@{domain}', 'strategy_agent_worker2', self.currency_symbol).start(auto_register=True)
+        await StrategyAgentWorker(f'strategy_agent_worker1@{domain}', 'strategy_agent_worker1',
+                                  self.currency_symbol).start(auto_register=True)
+        await StrategyAgentWorker(f'strategy_agent_worker2@{domain}', 'strategy_agent_worker2',
+                                  self.currency_symbol).start(auto_register=True)
         self.training_behaviour = self.TrainBehaviour()
         self.add_behaviour(self.training_behaviour)
         self.add_behaviour(StrategyAgent.GiveDecisionBehaviour(), request_decision_template)
@@ -61,7 +63,8 @@ class StrategyAgent(agent.Agent):
                     for genotype in population
                 ])
                 costs = await self.compute_costs(population)
-                population = [genotype for (genotype, cost) in sorted(zip(population, costs), key=lambda x: x[1])]
+                population = [genotype for (genotype, cost) in
+                              sorted(zip(population, costs), key=lambda x: x[1], reverse=True)]
                 population = population[:population_size]
 
             self.agent.log.debug('Training done!')
