@@ -61,6 +61,11 @@ class DataAgent(agent.Agent):
                     else:
                         print(f"Sa dane w bazie do wykorzystania")
                 print(f"Pobrano {len(records)} wyników dla {currency}")
+                reply = message.make_reply()
+                reply.set_metadata("performative", "reply")
+                reply.set_metadata("what", "historical data")
+                reply.body = jsonpickle.dumps(records)
+                await self.send(reply)
                 print(records[::25])
 
         def _create_records(self, currency: str, info: iter):
