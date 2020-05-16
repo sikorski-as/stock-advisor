@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+
 
 def calculate_moving_average(length, records):
     moving_average = pd.Series(records).rolling(window=length).mean().iloc[length - 1:].values
@@ -11,7 +11,8 @@ def calculate_moving_average(length, records):
 def cost_function(length_short, length_long, records):
     mean_short = calculate_moving_average(length_short, records)  # policzenie krótkiej średniej
     mean_long = calculate_moving_average(length_long, records)  # policzenie długiej średniej
-    sign = np.sign(mean_short - mean_long)  # wyznaczenie gdzie krótka jest wyżej od długiej (1 dla krótkiej większej od długiej, -1 dla długiej większej od krótkiej)
+    sign = np.sign(
+        mean_short - mean_long)  # wyznaczenie gdzie krótka jest wyżej od długiej (1 dla krótkiej większej od długiej, -1 dla długiej większej od krótkiej)
     signals = np.sign(sign[:-1] - sign[1:])  # wyznaczenie punktów przecięcia
     signals = np.insert(signals, 0, 0)
     buy_signals = np.where(signals == -1, -signals, 0)  # rozdzielenie sygnałów kupna
@@ -26,6 +27,7 @@ def cost_function(length_short, length_long, records):
         total += sell - buy
 
     return total
+
     # fig = plt.figure()
     # ax = fig.add_subplot(111)
     # ax.scatter(range(0, len(buy_signals)), np.abs(buy_signals) * mean_short, marker="+", color="red")

@@ -45,3 +45,5 @@ give_negative_decision_template = give_decision_template | make_template(answer=
 request_cost_computation = make_template(performative='request', what='cost function')
 
 please_retransfer = make_template(performative='please', what='retransfer cost function')
+
+reply_historical_data = make_template(performative='reply', what='historical data')

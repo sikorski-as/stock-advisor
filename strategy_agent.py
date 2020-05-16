@@ -1,8 +1,4 @@
 import jsonpickle
-
-import tools
-from job_manager import JobManager
-
 import numpy as np
 from aioxmpp import PresenceShow
 from spade import agent
@@ -10,8 +6,12 @@ from spade.behaviour import OneShotBehaviour, CyclicBehaviour
 from spade.template import Template
 
 import config
-from protocol import request_decision_template, give_positive_decision_template, request_cost_computation, \
-    give_negative_decision_template
+import tools
+from config import domain
+from data_agent import DataAgent
+from job_manager import JobManager
+from protocol import give_negative_decision_template
+from protocol import request_decision_template, give_positive_decision_template, request_cost_computation
 from strategy_worker_agent import StrategyAgentWorker
 from tools import make_logger, message_from_template
 
@@ -26,8 +26,8 @@ class StrategyAgent(agent.Agent):
 
     async def setup(self):
         self.log.debug('Starting!')
-        await StrategyAgentWorker('strategy_agent_worker1@localhost', 'strategy_agent_worker1').start()
-        # await StrategyAgentWorker('strategy_agent_worker2@localhost', 'strategy_agent_worker2', bad=True).start()
+        await StrategyAgentWorker(f'strategy_agent_worker1@{domain}', 'strategy_agent_worker1', self.currency_symbol).start(auto_register=True)
+        await StrategyAgentWorker(f'strategy_agent_worker2@{domain}', 'strategy_agent_worker2', self.currency_symbol).start(auto_register=True)
         self.training_behaviour = self.TrainBehaviour()
         self.add_behaviour(self.training_behaviour)
         self.add_behaviour(StrategyAgent.GiveDecisionBehaviour(), request_decision_template)
@@ -36,7 +36,7 @@ class StrategyAgent(agent.Agent):
         def __init__(self, *args, **kwargs):
             super(StrategyAgent.TrainBehaviour, self).__init__()
             self.job_manager = JobManager(
-                workers=['strategy_agent_worker1@localhost', 'strategy_agent_worker2@localhost'])
+                workers=[f'strategy_agent_worker1@{domain}', f'strategy_agent_worker2@{domain}'])
 
         async def on_start(self):
             self.presence.set_available(show=PresenceShow.DND)
@@ -47,7 +47,7 @@ class StrategyAgent(agent.Agent):
             population_size = 6
             mutation_chance = 0.05
             niterations = 20
-            random_genotype = lambda: np.random.randint(1, 6, size=(2,))
+            random_genotype = lambda: np.array([np.random.randint(10, 30), np.random.randint(100, 300)])
             repair = lambda genes: np.where(genes < 1, 1, genes)
             _mutate = lambda genes: genes + np.random.randint(-1, 2, size=(2,))
             mutate = lambda genes: repair(_mutate(genes))
@@ -94,7 +94,7 @@ class StrategyAgent(agent.Agent):
                                                 to=self.job.worker_id,
                                                 thread=self.conversation_id)
                     await self.send(msg)
-                    reply = await self.receive(20)
+                    reply = await self.receive(timeout=config.timeout)
                     if reply:
                         self.job.result = jsonpickle.loads(reply.body)
                         self.agent.log.debug('Reply from worker {} arrived: {}'.format(reply.sender, self.job.result))
@@ -125,5 +125,7 @@ class StrategyAgent(agent.Agent):
 
 
 if __name__ == '__main__':
-    agent = StrategyAgent('strategy_agent@localhost', 'strategy_agent', 'BTC')
-    agent.start()
+    data_agent = DataAgent("data_agent@127.0.0.1", "data_agent")
+    data_agent.start(auto_register=False)
+    agent = StrategyAgent(f'strategy_agent_worker@{domain}', 'strategy_agent_worker1', "ETH")
+    agent.start(auto_register=True)
