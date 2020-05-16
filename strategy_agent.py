@@ -94,7 +94,7 @@ class StrategyAgent(agent.Agent):
                                                 to=self.job.worker_id,
                                                 thread=self.conversation_id)
                     await self.send(msg)
-                    reply = await self.receive(20)
+                    reply = await self.receive(timeout=config.timeout)
                     if reply:
                         self.job.result = jsonpickle.loads(reply.body)
                         self.agent.log.debug('Reply from worker {} arrived: {}'.format(reply.sender, self.job.result))
@@ -125,7 +125,7 @@ class StrategyAgent(agent.Agent):
 
 
 if __name__ == '__main__':
-    data_agent = DataAgent(f"data_agent@{domain}", "data_agent")
+    data_agent = DataAgent("data_agent@127.0.0.1", "data_agent")
     data_agent.start(auto_register=False)
-    agent = StrategyAgent(f'strategy_agent@{domain}', 'strategy_agent', 'BTC')
+    agent = StrategyAgent(f'strategy_agent_worker@{domain}', 'strategy_agent_worker1', "ETH")
     agent.start(auto_register=True)

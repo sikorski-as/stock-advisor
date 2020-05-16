@@ -23,10 +23,9 @@ class StrategyAgentWorker(agent.Agent):
         self.log = tools.make_logger(self.jid)
 
     async def setup(self):
-        print("Hello World! I'm agent {}".format(str(self.jid)))
+        self.log.debug('Starting!')
         self.add_behaviour(self.RetrieveDataBehaviour(), reply_historical_data)
         self.add_behaviour(StrategyAgentWorker.MasterConversation(), request_cost_computation)
-        self.log.debug('Starting!')
         self.records_ready = asyncio.Semaphore(value=0)
 
     class MasterConversation(CyclicBehaviour):
@@ -35,7 +34,9 @@ class StrategyAgentWorker(agent.Agent):
             await self.agent.records_ready.acquire()
             if msg:
                 data = jsonpickle.loads(msg.body)
+                self.agent.log.debug('Data ready, computing cost function')
                 costs = [cost_function(value[0], value[1], self.agent.training_records) for value in data]
+                self.agent.log.debug('Cost function computed')
                 reply = msg.make_reply()
                 reply.metadata = dict(performative='reply')
                 reply.body = tools.to_json(costs)
@@ -46,6 +47,7 @@ class StrategyAgentWorker(agent.Agent):
 
     class RetrieveDataBehaviour(OneShotBehaviour):
         async def run(self):
+            self.agent.log.debug('Retrieving data from Data Agent')
             msg = Message(to="data_agent@127.0.0.1")
             msg.set_metadata("performative", "inform")
             msg.set_metadata("ontology", "history")
