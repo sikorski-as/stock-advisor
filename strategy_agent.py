@@ -5,6 +5,7 @@ import math
 import random
 from asyncio import sleep
 
+import jsonpickle
 import numpy as np
 from aioxmpp import PresenceShow
 from spade import agent
@@ -13,9 +14,12 @@ from spade.template import Template
 
 import config
 import tools
+from data_agent import DataAgent
 from tools import make_logger, message_from_template
 from protocol import request_decision_template, give_positive_decision_template, request_cost_computation
 from strategy_worker_agent import StrategyAgentWorker
+
+from config import domain
 
 
 class StrategyAgent(agent.Agent):
@@ -31,8 +35,8 @@ class StrategyAgent(agent.Agent):
         self.presence.approve_all = True
         self.training_behaviour = self.TrainBehaviour()
         self.add_behaviour(self.training_behaviour)
-        await StrategyAgentWorker('strategy_agent_worker1@localhost', 'strategy_agent_worker1').start()
-        await StrategyAgentWorker('strategy_agent_worker2@localhost', 'strategy_agent_worker2').start()
+        await StrategyAgentWorker(f'strategy_agent_worker1@{domain}', 'strategy_agent_worker1', self.currency_symbol).start(auto_register=True)
+        await StrategyAgentWorker(f'strategy_agent_worker2@{domain}', 'strategy_agent_worker2', self.currency_symbol).start(auto_register=True)
 
     class TrainBehaviour(OneShotBehaviour):
         def __init__(self, *args, **kwargs):
@@ -40,8 +44,8 @@ class StrategyAgent(agent.Agent):
             self.computed_cost_function = []
             self.computed_cost_function_arrived = asyncio.Semaphore(value=0)
             self.workers = [
-                'strategy_agent_worker1@localhost',
-                'strategy_agent_worker2@localhost',
+                f'strategy_agent_worker1@{domain}',
+                f'strategy_agent_worker2@{domain}',
             ]
 
         async def on_start(self):
@@ -53,7 +57,7 @@ class StrategyAgent(agent.Agent):
             population_size = 6
             mutation_chance = 0.05
             niterations = 20
-            random_genotype = lambda: np.random.randint(1, 6, size=(2,))
+            random_genotype = lambda: np.array([np.random.randint(10, 30), np.random.randint(100, 300)])
             repair = lambda genes: np.where(genes < 1, 1, genes)
             _mutate = lambda genes: genes + np.random.randint(-1, 2, size=(2,))
             mutate = lambda genes: repair(_mutate(genes))
@@ -67,6 +71,7 @@ class StrategyAgent(agent.Agent):
                     for genotype in population
                 ])
                 costs = await self.compute_cost_function(population)
+                print(costs)
                 population = [genotype for (genotype, cost) in sorted(zip(population, costs), key=lambda x: x[1])]
                 population = population[:population_size]
 
@@ -113,7 +118,7 @@ class StrategyAgent(agent.Agent):
         async def run(self):
             for _ in range(self.ATTEMPTS):
                 msg = message_from_template(request_cost_computation,
-                                            body=tools.to_json(self.data),
+                                            body=jsonpickle.dumps(self.data),
                                             to=self.worker_jid,
                                             thread=self.conversation_id)
                 await self.send(msg)
@@ -121,6 +126,7 @@ class StrategyAgent(agent.Agent):
                 if reply:
                     self.agent.log.debug('Reply from worker {} arrived!'.format(self.worker_jid))
                     computed_data = tools.from_json(reply.body)
+                    print(computed_data)
                     await self.agent.training_behaviour.feed_computed_cost_function(self.data_range_id, computed_data)
                     break
             else:
@@ -142,5 +148,7 @@ class StrategyAgent(agent.Agent):
 
 
 if __name__ == '__main__':
-    agent = StrategyAgent('strategy_agent@localhost', 'strategy_agent', 'BTC')
-    agent.start()
+    data_agent = DataAgent("data_agent@127.0.0.1", "data_agent")
+    data_agent.start(auto_register=False)
+    agent = StrategyAgent(f'strategy_agent@{domain}', 'strategy_agent', 'BTC')
+    agent.start(auto_register=True)
