@@ -48,15 +48,22 @@ class StrategyAgentWorker(agent.Agent):
     class RetrieveDataBehaviour(OneShotBehaviour):
         async def run(self):
             self.agent.log.debug('Retrieving data from Data Agent')
-            msg = Message(to="data_agent@127.0.0.1")
-            msg.set_metadata("performative", "inform")
-            msg.set_metadata("ontology", "history")
-            msg.body = self.agent.currency_symbol
+            msg = tools.create_message(to="data_agent@127.0.0.1",
+                                       performative="inform", ontology="history",
+                                       body=jsonpickle.encode(value=(self.agent.currency_symbol, None))) # jeśli dane treningowe
+
+            # msg = tools.create_message(to="data_agent@127.0.0.1",
+            #                            performative="inform", ontology="history",
+            #                            body=jsonpickle.encode(
+            #                                value=(self.agent.currency_symbol, 10)))  # jeśli dane z ostatnich dni
+
             await self.send(msg)
             reply = await self.receive(100)
             if reply is not None:
                 self.agent.records = jsonpickle.loads(reply.body)
-                self.agent.training_records = list(map(lambda x: x.close, sorted(filter(lambda x: x.time > 1514678400, self.agent.records), key=lambda x: x.time)))
+                self.agent.training_records = list(map(lambda x: x.close,
+                                                       sorted(filter(lambda x: x.time > 1514678400, self.agent.records),
+                                                              key=lambda x: x.time)))
                 self.agent.records_ready.release()
 
 

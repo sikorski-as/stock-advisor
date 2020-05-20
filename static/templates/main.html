@@ -16,8 +16,8 @@
     <script>
         function train() {
             console.log("train");
-            const symbol = $("#symbol").val();
-            console.log($("#symbol").val());
+            const symbol = $("#train_symbol").val();
+            console.log($("#train_symbol").val());
             jQuery.post("/train", {symbol: symbol}).done(function (res) {
                 console.log(res);
                 let response = jQuery.parseJSON(res);
@@ -30,11 +30,12 @@
             });
         }
 
-        function decision(currency) {
+
+        function decision() {
             console.log("decision");
-            console.log(currency)
-            jQuery.post("/decision", {symbol: currency}, function (res) {
-                {#$("#response").html($("#response").html() + "<br\>" + "Decision: " + res);#}
+            const symbol = $("#decision_symbol").val();
+            console.log($("#decision_symbol").val());
+            jQuery.post("/decision", {symbol: symbol}).done(function (res) {
                 console.log(res);
                 let response = jQuery.parseJSON(res);
                 $("#logs").find('tbody').append("<tr>\n" +
@@ -45,6 +46,7 @@
                     "        </tr>");
             });
         }
+
 
         function list() {
             console.log("list");
@@ -63,97 +65,39 @@
         function clearTable(){
             $("#logs tbody tr").remove();
         }
-
-        {#function retrieveTrain() {#}
-        {#    console.log("train");#}
-        {#    const symbol = $("#retrieveSymbol").val();#}
-        {#    console.log($("#retrieveSymbol").val());#}
-        {#    jQuery.post("/retrieve/train", {symbol: symbol}).done(function (data) {#}
-        {#        console.log(data)#}
-        {#    });#}
-        {#}#}
-        {##}
-        {#function retrieveDecision(currency) {#}
-        {#    console.log("decision");#}
-        {#    console.log(currency)#}
-        {#    jQuery.post("/retrieve/decision", {symbol: currency}, function (res) {#}
-        {#        console.log(res);#}
-        {#        $("#response").html($("#response").html() + "<br\>" + "Decision: " + res);#}
-        {#    });#}
-        {#}#}
-        {##}
-        {#function retrieveList() {#}
-        {#    console.log("list");#}
-        {#    jQuery.getJSON("/retrieve/list", function (res) {#}
-        {#        console.log(res);#}
-        {#        $("#response").html($("#response").html() + "<br\>" + "List: " + res);#}
-        {#    });#}
-        {#}#}
     </script>
 </head>
 <body>
-<div class="container">
-    <p style="text-align: center; font-size: 20px"> Call </p>
-    <div class="row align-items-center">
+<div class="container" style="margin-bottom: 3%; ">
+    <h1 style="text-align: center"> Stock market </h1>
+    <div class="row align-items-center" style="margin-top: 3%">
         <div class="col-sm text-center">
             Train
             <div class="form-group">
                 Enter currency symbol:
-                <input id="symbol" type="text" class="form-control">
-                <button class="btn btn-primary" onclick="train()">Train</button>
+                <input id="train_symbol" type="text" class="form-control">
+                <button class="btn btn-primary" onclick="train()" style="margin-top:10px">Train</button>
             </div>
         </div>
+
         <div class="col-sm text-center">
             Decision
-
-            <ol>
-                {% for currency in currencies %}
-                    <li>
-                        <button id="{{ currency.name }}" class="btn btn-primary" onclick="decision(this.id)"><img
-                                src="https://s2.coinmarketcap.com/static/img/coins/64x64/{{ currency.id }}.png"
-                                alt="{{ currency.id }}"></button>
-                    </li>
-                {% endfor %}
-            </ol>
+            <div class="form-group">
+                Enter currency symbol:
+                <input id="decision_symbol" type="text" class="form-control">
+                <button class="btn btn-primary" onclick="decision()" style="margin-top:10px">Get decision</button>
+            </div>
         </div>
+
+
         <div class="col-sm text-center">
-            <button class="btn btn-primary" onclick="list()">List</button>
+            <button class="btn btn-primary" onclick="list()">List trained models</button>
         </div>
     </div>
 </div>
-{##}
-{#<div class="retrieve_container">#}
-{#    <p style="text-align: center; font-size: 20px"> Retrieve </p>#}
-{#    <div class="row align-items-center">#}
-{#        <div class="col-sm text-center">#}
-{#            Train#}
-{#            <div class="form-group">#}
-{#                Enter currency symbol:#}
-{#                <input id="retrieveSymbol" type="text" class="form-control">#}
-{#                <button class="btn btn-primary" onclick="retrieveTrain()">Train</button>#}
-{#            </div>#}
-{#        </div>#}
-{#        <div class="col-sm text-center">#}
-{#            Decision#}
-{##}
-{#            <ol>#}
-{#                {% for currency in currencies %}#}
-{#                    <li>#}
-{#                        <button id="{{ currency.name }}" class="btn btn-primary" onclick="retrieveDecision(this.id)">#}
-{#                            <img src="https://s2.coinmarketcap.com/static/img/coins/64x64/{{ currency.id }}.png"#}
-{#                                 alt="{{ currency.id }}"></button>#}
-{#                    </li>#}
-{#                {% endfor %}#}
-{#            </ol>#}
-{#        </div>#}
-{#        <div class="col-sm text-center">#}
-{#            <button class="btn btn-primary" onclick="retrieveList()">List</button>#}
-{#        </div>#}
-{#    </div>#}
-{#    <p id="response" style="text-align:center"></p>#}
-{#</div>#}
-
-<button type="button" class="btn btn-danger" onclick="clearTable()"> Clear</button>
+<div style="text-align: center; padding-bottom: 5px">
+    <button type="button" class="btn btn-danger" onclick="clearTable()"> Clear</button>
+</div>
 <div style="margin-left:10%; margin-right: 10%">
     <table id="logs" class="table table-striped">
         <thead>

@@ -31,6 +31,10 @@ class Response:
         self._date = datetime.datetime.now()
 
     @property
+    def date(self):
+        return self._date
+
+    @property
     def body(self):
         return self._body
 

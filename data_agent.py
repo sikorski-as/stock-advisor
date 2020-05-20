@@ -20,10 +20,11 @@ class DataAgent(agent.Agent):
     def __init__(self, jid, password):
         super().__init__(jid, password)
         self.session = builder.Session()
+        self.log = tools.make_logger(self.jid)
 
     async def setup(self):
 
-        print("Hello World! I'm agent {}".format(str(self.jid)))
+        self.log.debug("Hello World! I'm agent {}".format(str(self.jid)))
 
         history_data_template = tools.create_template("inform", "history")
         self.add_behaviour(self.HistoryDataBehaviour(self.session), history_data_template)
@@ -51,16 +52,23 @@ class DataAgent(agent.Agent):
         async def run(self):
             message = await self.receive(config.timeout)
             if message is not None:
-                currency = message.body
-                print(f"Wczytuje dane historyczne dla {currency}")
-                records = list(await self._get_yearly_currency_data(currency, "PLN", self.YEARS))
-                if not records:
-                    records = self._get_info_from_db(currency).all()
+                currency, days_amount = jsonpickle.decode(message.body)
+
+                if not days_amount:
+                    self.agent.log.debug(f"Wczytuje dane historyczne dla {currency}")
+                    records = list(await self._get_yearly_currency_data(currency, "PLN", self.YEARS))
                     if not records:
-                        print("Polaczenie z siecia zawiodlo i nie ma tez zadnego backupu w bazie")
-                    else:
-                        print(f"Sa dane w bazie do wykorzystania")
-                print(f"Pobrano {len(records)} wyników dla {currency}")
+                        records = self._get_info_from_db(currency).all()
+                        if not records:
+                            self.agent.log.debug(
+                                "Polaczenie z siecia zawiodlo i nie ma tez zadnego backupu w bazie lub dana waluta nie istnieje")
+                        else:
+                            self.agent.log.debug(f"Sa dane w bazie do wykorzystania")
+                else:
+                    self.agent.log.debug(f"Wczytuje informacje z ostatnich {days_amount} dni dla {currency}")
+                    records = await self._get_last_days_currency_data(currency, "PLN", days_amount)
+
+                self.agent.log.debug(f"Pobrano {len(records)} wyników dla {currency}")
                 reply = message.make_reply()
                 reply.set_metadata("performative", "reply")
                 reply.set_metadata("what", "historical data")
@@ -73,10 +81,13 @@ class DataAgent(agent.Agent):
                     for time, high, low, open, close in info]
 
         def _retrieve_information(self, data: dict):
-            general_info = data['Data']
-            list_of_records = general_info['Data']
-            attrs = ["time", "high", "low", "open", "close"]
-            return [[record_info[attr] for attr in attrs] for record_info in list_of_records]
+            general_info = data.get('Data')
+            if general_info:
+                list_of_records = general_info['Data']
+                attrs = ["time", "high", "low", "open", "close"]
+                return [[record_info[attr] for attr in attrs] for record_info in list_of_records]
+            else:
+                return []
 
         async def _get_historical_data(self, session, fcurr: str, tcurr: str, limit: int, timestamp: int = None):
             """
@@ -91,15 +102,25 @@ class DataAgent(agent.Agent):
                 url = f"https://min-api.cryptocompare.com/data/v2/histoday?fsym={fcurr}&tsym={tcurr}&toTs={timestamp}&limit={limit}&api_key={config.API_KEY}"
             else:
                 url = f"https://min-api.cryptocompare.com/data/v2/histoday?fsym={fcurr}&tsym={tcurr}&limit={limit}&api_key={config.API_KEY}"
-            print(url)
+            # print(url)
             try:
                 async with session.get(url) as response:
                     data = json.loads(await response.text())
                     info = self._retrieve_information(data)
-                    return self._create_records(fcurr, info)
+                    if info:
+                        return self._create_records(fcurr, info)
+                    else:
+                        return []
             except ClientConnectorError as e:
-                print("Brak połączenia z siecią!")
+                self.agent.log.debug("Brak połączenia z siecią!")
                 return []
+
+        async def _get_last_days_currency_data(self, fcurr: str, tcurr: str, n: int):
+            async with aiohttp.ClientSession() as session:
+                # przy podaniu n api zwraca n+1 wyników stąd n-1
+                records = await self._get_historical_data(session, fcurr, tcurr, n-1)
+                # print(records)
+                return records
 
         async def _get_yearly_currency_data(self, fcurr: str, tcurr: str, years: iter) -> iter:
             "bierze statystyki z kazdego dnia na przestrzeni lat"
@@ -121,9 +142,9 @@ class DataAgent(agent.Agent):
             message = await self.receive(config.timeout)
             if message is not None:
                 currency = message.body
-                print(f"Wczytuje aktualny kurs dla {currency}")
+                self.agent.log.debug(f"Wczytuje aktualny kurs dla {currency}")
                 value = await self._get_value(currency)
-                print(f"Aktualny kurs to {value}")
+                self.agent.log.debug(f"Aktualny kurs to {value}")
                 message = tools.create_message("interface_agent@127.0.0.1", "inform", "decision",
                                                jsonpickle.encode((currency, value)))
                 await self.send(message)
@@ -135,9 +156,10 @@ class DataAgent(agent.Agent):
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url) as response:
                         data = json.loads(await response.text())
-                        return data[tcurr]
+                        return data.get(tcurr)
             except ClientConnectorError as e:
-                print("Nie ma polaczenia z siecia!")
+                self.agent.log.debug("Nie ma polaczenia z siecia!")
+                return None
 
     class ListModelsBehaviour(CyclicBehaviour):
 
@@ -149,7 +171,7 @@ class DataAgent(agent.Agent):
             message = await self.receive(10)
             if message is not None:
                 models_available = self._get_currency_with_models()
-                print(f"Dostępne modele to: {models_available}")
+                self.agent.log.debug(f"Dostępne modele to: {models_available}")
                 message = tools.create_message("interface_agent@127.0.0.1", "inform", "list",
                                                jsonpickle.encode(models_available))
                 await self.send(message)
@@ -173,7 +195,10 @@ class DataAgent(agent.Agent):
             if message is not None:
                 currency = message.body
                 model = self.session.query(Model).filter(Model.currency == currency).one_or_none()
-                print(f"Model dla waluty {currency} to {model.short_mean, model.long_mean}")
+                if model:
+                    self.agent.log.debug(f"Model dla waluty {currency} to {model.short_mean, model.long_mean}")
+                else:
+                    self.agent.log.debug(f"Nie ma modelu dla {currency}")
 
     class SaveModelBehaviour(CyclicBehaviour):
         """
@@ -195,7 +220,7 @@ class DataAgent(agent.Agent):
             if message is not None:
                 model_info = tools.from_json(message.body)
                 self.save_model(**model_info)
-                print(f"Zapisano model {model_info['currency']}")
+                self.agent.log.debug(f"Zapisano model {model_info['currency']}")
 
         def save_model(self, currency, short_mean, long_mean):
             db_model = self.session.query(Model).filter(Model.currency == currency).one_or_none()
