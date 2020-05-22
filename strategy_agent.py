@@ -52,19 +52,17 @@ class StrategyAgent(agent.Agent):
                 self.agent.model = model
                 self.agent.has_strategy = True
 
-
     class TrainBehaviour(OneShotBehaviour):
         def __init__(self, *args, **kwargs):
             super(StrategyAgent.TrainBehaviour, self).__init__()
-            self.job_manager = JobManager(
-                workers=[f'strategy_agent_worker1@{domain}', f'strategy_agent_worker2@{domain}'])
+            self.workers = []
+            self.job_manager = None
 
         async def on_start(self):
-            await StrategyAgentWorker(f'strategy_agent_worker1@{domain}', 'strategy_agent_worker1',
-                                      self.agent.currency_symbol).start(auto_register=True)
-            await StrategyAgentWorker(f'strategy_agent_worker2@{domain}', 'strategy_agent_worker2',
-                                      self.agent.currency_symbol).start(auto_register=True)
-            self.presence.set_available(show=PresenceShow.DND)
+            self.workers = [f'strategy_agent_worker_{self.agent.currency_symbol}_1@{domain}' for _ in range(2)]
+            self.job_manager = JobManager(workers=self.workers)
+            for worker_jid in self.workers:
+                await StrategyAgentWorker(worker_jid, worker_jid, self.agent.currency_symbol).start(auto_register=True)
 
         async def run(self):
             self.agent.log.debug('Starting training!')
@@ -173,10 +171,10 @@ class StrategyAgent(agent.Agent):
             await self.send(msg)
             reply = await self.receive(10)
             records = jsonpickle.loads(reply.body)
-            print(records)
+            # print(records)
             self.agent.decision_records = list(map(lambda x: x.close, records))
             self.agent.add_behaviour(StrategyAgent.GiveDecisionBehaviour(), request_decision_template)
-            print(self.agent.decision_records)
+            # print(self.agent.decision_records)
 
 
 if __name__ == '__main__':

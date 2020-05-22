@@ -1,7 +1,10 @@
+import asyncio
+
 import jsonpickle
 from spade import agent
 from spade.behaviour import CyclicBehaviour, OneShotBehaviour
 
+import protocol
 import tools
 from strategy_agent import StrategyAgent
 import config
@@ -23,8 +26,9 @@ class DecisionAgent(agent.Agent):
         list_response_template = tools.create_template("inform", "list")
         self.add_behaviour(self.ListResponseBehaviour(), list_response_template)
 
-        decision_template = tools.create_template("inform", "decision")
-        self.add_behaviour(self.DecisionBehaviour(), decision_template)
+        decision_request_template = tools.create_template("request", "decision")
+        self.add_behaviour(self.DecisionBehaviour(), decision_request_template)
+        self.add_behaviour(self.DecisionResponseBehaviour(), protocol.give_decision_template)
 
     async def ensure_strategy_agent(self, currency_symbol):
         jid = f'{currency_symbol}@{config.domain}'
@@ -77,10 +81,26 @@ class DecisionAgent(agent.Agent):
         async def run(self):
             message = await self.receive(config.timeout)
             if message is not None:
-                currency = message.body
-                print(f"Decision {message.body}")
-                message = tools.create_message(f"data_agent@{config.domain}", "inform", "current", currency)
-                await self.send(message)
+                currency = message.body.lower()
+                request = tools.message_from_template(protocol.request_decision_template,
+                                                      to=f'{currency}@{config.domain}')
+                self.agent.log.info(f'{message.sender} is asking for decision, asking {request.to} for an answer')
+                await self.agent.ensure_strategy_agent(currency)
+                await asyncio.sleep(5)
+                await self.send(request)
+
+    class DecisionResponseBehaviour(CyclicBehaviour):
+        async def run(self):
+            message = await self.receive(config.timeout)
+            if message is not None:
+                answer = message.metadata['answer']
+                self.agent.log.info(f'{message.sender} says "{answer}"')
+                currency = str(message.sender).split('@')[0]  # to bardzo brzydki trick
+                body = jsonpickle.encode([currency, message.metadata['answer']])
+                response_to_interface = tools.create_message(to=f'interface_agent@{config.domain}', performative='inform',
+                                                             ontology='decision', body=body)
+                await self.send(response_to_interface)
+                self.agent.log.info('Decision sent to interface!')
 
 
 if __name__ == '__main__':

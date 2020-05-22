@@ -34,13 +34,13 @@ request_decision_template = make_template(performative='request', what='decision
 give_decision_template = make_template(performative='reply', what='decision')
 
 "positive_decision from strategy agent"
-give_positive_decision_template = give_decision_template | make_template(answer='yes')
+give_positive_decision_template = make_template(performative='reply', what='decision', answer='yes')
 
 "negative_decision from strategy agent"
-give_negative_decision_template = give_decision_template | make_template(answer='no')
+give_negative_decision_template = make_template(performative='reply', what='decision', answer='no')
 
 "decision not available"
-give_decision_not_available_template = give_decision_template | make_template(answer='not available')
+give_decision_not_available_template = make_template(performative='reply', what='decision', answer='not available')
 
 "request model from data agent"
 request_model_from_db_template = make_template(performative='request', what='model')

@@ -120,17 +120,15 @@ class InterfaceAgent(agent.Agent):
             await self.send(message)
 
     class RequestDecisionBehaviour(OneShotBehaviour):
-
         def __init__(self, symbol):
             super().__init__()
             self.symbol = symbol
 
         async def run(self):
-            message = tools.create_message("decision_agent@127.0.0.1", "inform", "decision", self.symbol)
+            message = tools.create_message("decision_agent@127.0.0.1", "request", "decision", self.symbol)
             await self.send(message)
 
     class ResponseDecisionBehaviour(CyclicBehaviour):
-
         def __init__(self, operation_dict: dict):
             super().__init__()
             self.operations = operation_dict
@@ -138,6 +136,7 @@ class InterfaceAgent(agent.Agent):
         async def run(self):
             message = await self.receive(config.timeout)
             if message is not None:
+                self.agent.log.debug('Got decision from decision agent!')
                 currency, value = jsonpickle.decode(message.body)
                 operation = self.operations[config.DECISION_OPERATION][currency]
                 if not value:
