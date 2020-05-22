@@ -116,7 +116,7 @@ class InterfaceAgent(agent.Agent):
 
     class RequestListBehaviour(OneShotBehaviour):
         async def run(self):
-            message = tools.create_message("decision_agent@127.0.0.1", "inform", "list", "list")
+            message = tools.create_message("decision_agent@127.0.0.1", "request", "list", "list")
             await self.send(message)
 
     class RequestDecisionBehaviour(OneShotBehaviour):

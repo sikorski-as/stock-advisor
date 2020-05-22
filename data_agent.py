@@ -34,7 +34,7 @@ class DataAgent(agent.Agent):
         current_data_template = tools.create_template("inform", "current")
         self.add_behaviour(self.CurrentDataBehaviour(self.session), current_data_template)
 
-        list_models_template = tools.create_template("inform", "list")
+        list_models_template = tools.create_template("request", "list")
         self.add_behaviour(self.ListModelsBehaviour(self.session), list_models_template)
 
         self.add_behaviour(self.GetModelBehaviour(self.session), request_model_from_db_template)
@@ -172,7 +172,7 @@ class DataAgent(agent.Agent):
             if message is not None:
                 models_available = self._get_currency_with_models()
                 self.agent.log.debug(f"Dostępne modele to: {models_available}")
-                message = tools.create_message("interface_agent@127.0.0.1", "inform", "list",
+                message = tools.create_message(str(message.sender), "inform", "list",
                                                jsonpickle.encode(models_available))
                 await self.send(message)
 
