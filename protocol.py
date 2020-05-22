@@ -36,9 +36,23 @@ give_decision_template = make_template(performative='reply', what='decision')
 "positive_decision from strategy agent"
 give_positive_decision_template = give_decision_template | make_template(answer='yes')
 
-"positive_decision from strategy agent"
+"negative_decision from strategy agent"
 give_negative_decision_template = give_decision_template | make_template(answer='no')
 
+"decision not available"
+give_decision_not_available_template = give_decision_template | make_template(answer='not available')
+
+"request model from data agent"
+request_model_from_db_template = make_template(performative='request', what='model')
+
+"give model"
+give_model_template = make_template(performative='reply', what='model')
+
+"save model"
+save_model_to_db_template = make_template(performative='request', what='save_model')
+
+"give latest data"
+give_data_template = make_template(performative='reply', what='data')
 #
 # Strategy Agent Worker (SAW)
 #

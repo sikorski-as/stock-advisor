@@ -14,6 +14,8 @@ from database import builder
 from database.models import Model, Record
 import aiohttp
 
+from protocol import request_model_from_db_template, save_model_to_db_template
+
 
 class DataAgent(agent.Agent):
 
@@ -35,11 +37,9 @@ class DataAgent(agent.Agent):
         list_models_template = tools.create_template("inform", "list")
         self.add_behaviour(self.ListModelsBehaviour(self.session), list_models_template)
 
-        get_model_template = tools.create_template("inform", "getModel")
-        self.add_behaviour(self.GetModelBehaviour(self.session), get_model_template)
+        self.add_behaviour(self.GetModelBehaviour(self.session), request_model_from_db_template)
 
-        save_model_template = tools.create_template("inform", "saveModel")
-        self.add_behaviour(self.SaveModelBehaviour(self.session), save_model_template)
+        self.add_behaviour(self.SaveModelBehaviour(self.session), save_model_to_db_template)
 
     class HistoryDataBehaviour(CyclicBehaviour):
         "Epoch time dla lat 2014-2019, gdzie pierwszy element to 31.12.2014"
@@ -195,10 +195,17 @@ class DataAgent(agent.Agent):
             if message is not None:
                 currency = message.body
                 model = self.session.query(Model).filter(Model.currency == currency).one_or_none()
+                reply = message.make_reply()
+                reply.set_metadata("performative", "reply")
+                reply.set_metadata("what", "model")
                 if model:
+                    reply.body = jsonpickle.dumps(model)
                     self.agent.log.debug(f"Model dla waluty {currency} to {model.short_mean, model.long_mean}")
+                    await self.send(reply)
                 else:
+                    reply.body = jsonpickle.dumps(None)
                     self.agent.log.debug(f"Nie ma modelu dla {currency}")
+                    await self.send(reply)
 
     class SaveModelBehaviour(CyclicBehaviour):
         """
@@ -218,16 +225,16 @@ class DataAgent(agent.Agent):
         async def run(self):
             message = await self.receive(10)
             if message is not None:
-                model_info = tools.from_json(message.body)
-                self.save_model(**model_info)
-                self.agent.log.debug(f"Zapisano model {model_info['currency']}")
+                model = jsonpickle.loads(message.body)
+                self.save_model(model)
+                self.agent.log.debug(f"Zapisano model {model.currency}")
 
-        def save_model(self, currency, short_mean, long_mean):
-            db_model = self.session.query(Model).filter(Model.currency == currency).one_or_none()
+        def save_model(self, model):
+            db_model = self.session.query(Model).filter(Model.currency == model.currency).one_or_none()
             if db_model:
-                db_model.short_mean = short_mean
-                db_model.long_mean = long_mean
+                db_model.short_mean = model.short_mean
+                db_model.long_mean = model.long_mean
             else:
-                model = Model(currency=currency, short_mean=short_mean, long_mean=long_mean)
-                self.session.add(model)
+                m = Model(currency=model.currency, long_mean=int(model.long_mean), short_mean=int(model.short_mean))
+                self.session.add(m)
             self.session.commit()

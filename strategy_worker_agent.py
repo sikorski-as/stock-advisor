@@ -40,7 +40,6 @@ class StrategyAgentWorker(agent.Agent):
                 reply = msg.make_reply()
                 reply.metadata = dict(performative='reply')
                 reply.body = tools.to_json(costs)
-                await asyncio.sleep(5)
                 await self.send(reply)
                 self.agent.log.debug('Reply sent!')
             self.agent.records_ready.release()
@@ -51,11 +50,6 @@ class StrategyAgentWorker(agent.Agent):
             msg = tools.create_message(to="data_agent@127.0.0.1",
                                        performative="inform", ontology="history",
                                        body=jsonpickle.encode(value=(self.agent.currency_symbol, None))) # jeśli dane treningowe
-
-            # msg = tools.create_message(to="data_agent@127.0.0.1",
-            #                            performative="inform", ontology="history",
-            #                            body=jsonpickle.encode(
-            #                                value=(self.agent.currency_symbol, 10)))  # jeśli dane z ostatnich dni
 
             await self.send(msg)
             reply = await self.receive(100)
