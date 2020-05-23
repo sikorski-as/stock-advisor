@@ -13,21 +13,22 @@
             crossorigin="anonymous"></script>
     <meta charset="UTF-8">
     <title>Title</title>
-    <script>
+
+</head>
+
+
+
+
+
+ <script>
+         let ws = new WebSocket("ws://127.0.0.1:10001/");
+
+
         function train() {
             console.log("train");
             const symbol = $("#train_symbol").val();
             console.log($("#train_symbol").val());
-            jQuery.post("/train", {symbol: symbol}).done(function (res) {
-                console.log(res);
-                let response = jQuery.parseJSON(res);
-                $("#logs").find('tbody').append("<tr>\n" +
-                    "<td> " + "Train" + "</td>\n" +
-                    "<td> " + response.body + "</td>\n" +
-                    "<td> " + response.date +  " </td>\n" +
-                    "<td> " + response.status +  "</td>\n" +
-                    "        </tr>");
-            });
+            ws.send(JSON.stringify({action: 'train', body: symbol}));
         }
 
 
@@ -35,39 +36,38 @@
             console.log("decision");
             const symbol = $("#decision_symbol").val();
             console.log($("#decision_symbol").val());
-            jQuery.post("/decision", {symbol: symbol}).done(function (res) {
-                console.log(res);
-                let response = jQuery.parseJSON(res);
-                $("#logs").find('tbody').append("<tr>\n" +
-                    "<td> " + "Decision" + "</td>\n" +
+
+            ws.send(JSON.stringify({action: 'decision', body: symbol}));
+            }
+
+
+        ws.onmessage = function (event) {
+           let response = JSON.parse(event.data)
+            console.log(response)
+           $("#logs").find('tbody').append("<tr>\n" +
+                    "<td> " + response.type + "</td>\n" +
                     "<td> " + response.body + "</td>\n" +
                     "<td> " + response.date +  " </td>\n" +
                     "<td> " + response.status +  "</td>\n" +
                     "        </tr>");
-            });
-        }
-
+        };
 
         function list() {
-            console.log("list");
-            jQuery.getJSON("/list", function (res) {
-                {#$("#response").html($("#response").html() + "<br\>" + "List: " + res);#}
-                console.log(res);
-                let response = jQuery.parseJSON(res);
-                $("#logs").find('tbody').append("<tr>\n" +
-                    "<td> " + "List" + "</td>\n" +
-                    "<td> " + response.body + "</td>\n" +
-                    "<td> " + response.date +  " </td>\n" +
-                    "<td> " + response.status +  "</td>\n" +
-                    "        </tr>");
-            });
+
+            ws.send(JSON.stringify({action: 'list', body: ''}));
+
+
         }
         function clearTable(){
             $("#logs tbody tr").remove();
         }
     </script>
-</head>
+
+
 <body>
+
+
+
 <div class="container" style="margin-bottom: 3%; ">
     <h1 style="text-align: center"> Stock market </h1>
     <div class="row align-items-center" style="margin-top: 3%">
@@ -114,4 +114,8 @@
     </table>
 </div>
 </body>
+
+
+
+
 </html>
