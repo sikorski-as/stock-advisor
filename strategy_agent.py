@@ -93,7 +93,7 @@ class StrategyAgent(agent.Agent):
         async def run(self):
             self.agent.log.debug('Starting training!')
 
-            population_size = 6
+            population_size = 10
             mutation_chance = 0.05
             niterations = 20
             random_genotype = lambda: np.array([np.random.randint(10, 30), np.random.randint(100, 300)])
@@ -109,7 +109,7 @@ class StrategyAgent(agent.Agent):
                     else genotype
                     for genotype in population
                 ])
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.5)  # slowdown of training for presentation purposes
                 costs = await self.compute_costs(population)
                 population = [genotype for (genotype, cost) in
                               sorted(zip(population, costs), key=lambda x: x[1], reverse=True)]
