@@ -145,8 +145,8 @@ class DataAgent(agent.Agent):
                 self.agent.log.debug(f"Wczytuje aktualny kurs dla {currency}")
                 value = await self._get_value(currency)
                 self.agent.log.debug(f"Aktualny kurs to {value}")
-                message = tools.create_message("interface_agent@127.0.0.1", "inform", "decision",
-                                               jsonpickle.encode((currency, value)))
+                # message = tools.create_message("interface_agent@127.0.0.1", "inform", "decision",
+                #                                jsonpickle.encode((currency, value)))
                 await self.send(message)
 
         async def _get_value(self, fcurr, tcurr="PLN"):

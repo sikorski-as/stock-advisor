@@ -14,13 +14,14 @@ from protocol import request_cost_computation, reply_historical_data
 
 class StrategyAgentWorker(agent.Agent):
 
-    def __init__(self, jid, password, currency_symbol, verify_security=False):
+    def __init__(self, jid, password, currency_symbol, verify_security=False, badness=0):
         super().__init__(jid, password, verify_security)
         self.currency_symbol = currency_symbol
         self.records_ready = None
         self.records = None
         self.training_records = None
         self.log = tools.make_logger(self.jid)
+        self.badness = badness
 
     async def setup(self):
         self.log.debug('Starting!')
@@ -33,15 +34,20 @@ class StrategyAgentWorker(agent.Agent):
             msg = await self.receive(30)  # type: Message
             await self.agent.records_ready.acquire()
             if msg:
-                data = jsonpickle.loads(msg.body)
-                self.agent.log.debug('Data ready, computing cost function')
-                costs = [cost_function(value[0], value[1], self.agent.training_records) for value in data]
-                self.agent.log.debug('Cost function computed')
-                reply = msg.make_reply()
-                reply.metadata = dict(performative='reply')
-                reply.body = tools.to_json(costs)
-                await self.send(reply)
-                self.agent.log.debug('Reply sent!')
+                if self.agent.badness > 0:
+                    self.agent.log.debug('Simulating malfunction, not answering...')
+                    self.agent.badness -= 1
+                else:
+                    data = jsonpickle.loads(msg.body)
+                    self.agent.log.debug('Data ready, computing cost function')
+                    costs = [cost_function(value[0], value[1], self.agent.training_records) for value in data]
+                    self.agent.log.debug('Cost function computed')
+                    reply = msg.make_reply()
+                    reply.metadata = dict(performative='reply')
+                    reply.body = tools.to_json(costs)
+                    await self.send(reply)
+                    self.agent.log.debug('Reply sent!')
+
             self.agent.records_ready.release()
 
     class RetrieveDataBehaviour(OneShotBehaviour):

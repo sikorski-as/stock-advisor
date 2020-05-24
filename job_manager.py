@@ -48,7 +48,8 @@ class JobManager:
 
     def _get_one_worker(self):
         available_workers = self._available_workers()
-        worker, jobs = min(self._workers.items(),
+        available_workers = {worker_jid: self._workers[worker_jid] for worker_jid in available_workers}
+        worker, jobs = min(available_workers.items(),
                            key=lambda worker_and_descriptor: worker_and_descriptor[1].assigned_jobs)
         self._workers[worker].assigned_jobs += 1
         return worker

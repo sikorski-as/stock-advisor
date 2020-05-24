@@ -87,8 +87,9 @@ class StrategyAgent(agent.Agent):
         async def on_start(self):
             self.workers = [f'strategy_agent_worker_{self.agent.currency_symbol}_{i}@{domain}' for i in range(2)]
             self.job_manager = JobManager(workers=self.workers)
-            for worker_jid in self.workers:
-                await StrategyAgentWorker(worker_jid, worker_jid, self.agent.currency_symbol).start(auto_register=True)
+            for i, worker_jid in enumerate(self.workers):
+                badness = 6 if i == 0 else 0
+                await StrategyAgentWorker(worker_jid, worker_jid, self.agent.currency_symbol, badness=badness).start(auto_register=True)
 
         async def run(self):
             self.agent.log.debug('Starting training!')
@@ -158,14 +159,19 @@ class StrategyAgent(agent.Agent):
                                                 to=self.job.worker_id,
                                                 thread=self.conversation_id)
                     await self.send(msg)
-                    reply = await self.receive(timeout=config.timeout)
+                    reply = await self.receive(timeout=25)
                     if reply:
                         self.job.result = jsonpickle.loads(reply.body)
                         self.agent.log.debug('Reply from worker {} arrived: {}'.format(reply.sender, self.job.result))
                         await self.agent.training_behaviour.job_manager.job_done(self.job)
                         return
+                    else:
+                        if attempt + 1 < self.ATTEMPTS:
+                            self.agent.log.error(
+                                f'Reply from worker {self.job.worker_id} not arrived! Requesting again!')
+
                 else:
-                    self.agent.log.error('Reply from worker {} not arrived!'.format(self.job.worker_id))
+                    self.agent.log.error(f'Reply from worker {self.job.worker_id} not arrived! Changing worker!')
                     self.job = await self.agent.training_behaviour.job_manager.job_failed(self.job)
 
     class GiveDecisionBehaviour(CyclicBehaviour):
