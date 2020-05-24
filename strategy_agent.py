@@ -22,7 +22,7 @@ from strategy_worker_agent import StrategyAgentWorker
 from tools import make_logger, message_from_template
 
 
-WORKER_0_BADNESS = 6
+WORKER_0_BADNESS = 0
 
 
 class StrategyAgent(agent.Agent):
