@@ -3,3 +3,4 @@ sqlalchemy
 spade
 pandas
 numpy
+websockets
