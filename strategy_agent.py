@@ -85,7 +85,7 @@ class StrategyAgent(agent.Agent):
             self.job_manager = None
 
         async def on_start(self):
-            self.workers = [f'strategy_agent_worker_{self.agent.currency_symbol}_{i}@{domain}' for i in range(2)]
+            self.workers = [f'{self.agent.currency_symbol}_worker_{i}@{domain}' for i in range(2)]
             self.job_manager = JobManager(workers=self.workers)
             for i, worker_jid in enumerate(self.workers):
                 badness = 6 if i == 0 else 0
@@ -159,7 +159,7 @@ class StrategyAgent(agent.Agent):
                                                 to=self.job.worker_id,
                                                 thread=self.conversation_id)
                     await self.send(msg)
-                    reply = await self.receive(timeout=25)
+                    reply = await self.receive(timeout=15)
                     if reply:
                         self.job.result = jsonpickle.loads(reply.body)
                         self.agent.log.debug('Reply from worker {} arrived: {}'.format(reply.sender, self.job.result))
