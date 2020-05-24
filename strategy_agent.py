@@ -85,7 +85,7 @@ class StrategyAgent(agent.Agent):
             self.job_manager = None
 
         async def on_start(self):
-            self.workers = [f'strategy_agent_worker_{self.agent.currency_symbol}_1@{domain}' for _ in range(2)]
+            self.workers = [f'strategy_agent_worker_{self.agent.currency_symbol}_{i}@{domain}' for i in range(2)]
             self.job_manager = JobManager(workers=self.workers)
             for worker_jid in self.workers:
                 await StrategyAgentWorker(worker_jid, worker_jid, self.agent.currency_symbol).start(auto_register=True)
@@ -109,6 +109,7 @@ class StrategyAgent(agent.Agent):
                     else genotype
                     for genotype in population
                 ])
+                await asyncio.sleep(1)
                 costs = await self.compute_costs(population)
                 population = [genotype for (genotype, cost) in
                               sorted(zip(population, costs), key=lambda x: x[1], reverse=True)]

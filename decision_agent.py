@@ -108,7 +108,7 @@ class DecisionAgent(agent.Agent):
                                                       to=f'{currency}@{config.domain}')
                 self.agent.log.info(f'{message.sender} is asking for decision, asking {request.to} for an answer')
                 await self.agent.ensure_strategy_agent(currency)
-                await asyncio.sleep(5)
+                await asyncio.sleep(3)
                 await self.send(request)
 
     class DecisionResponseBehaviour(CyclicBehaviour):
