@@ -22,7 +22,7 @@ ping_template = make_template(performative='ping')
 #
 # Decision Agent (DecA)
 #
-...
+request_train_template = make_template(performative='request', what='train')
 
 #
 # Strategy Agent (SA)
@@ -53,6 +53,9 @@ save_model_to_db_template = make_template(performative='request', what='save_mod
 
 "give latest data"
 give_data_template = make_template(performative='reply', what='data')
+
+"model ready"
+model_ready_template = make_template(performative='inform', what='train')
 #
 # Strategy Agent Worker (SAW)
 #

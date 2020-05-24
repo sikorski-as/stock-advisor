@@ -1,3 +1,5 @@
+import asyncio
+
 import jsonpickle
 import numpy as np
 from aioxmpp import PresenceShow
@@ -6,6 +8,7 @@ from spade.behaviour import OneShotBehaviour, CyclicBehaviour
 from spade.template import Template
 
 import config
+import protocol
 import tools
 from config import domain
 from data_agent import DataAgent
@@ -28,15 +31,24 @@ class StrategyAgent(agent.Agent):
         self.has_strategy = False
         self.model = None
         self.decision_records = None
+        self.startup_done = False
 
     async def setup(self):
         self.log.debug('Starting!')
         self.training_behaviour = self.TrainBehaviour()
         self.add_behaviour(self.PrepareModelBehaviour(), give_model_template)
         self.add_behaviour(self.PrepareDataBehaviour(), reply_historical_data)
+        self.add_behaviour(self.TrainingRequestBehaviour(), protocol.request_train_template)
+
+    def prepare_model_ready_message(self):
+        m = self.model
+        model_info = jsonpickle.encode((self.currency_symbol, (m.short_mean, m.long_mean)))
+        model_ready_msg = tools.message_from_template(protocol.model_ready_template,
+                                                      to=f'decision_agent@{config.domain}',
+                                                      body=model_info)
+        return model_ready_msg
 
     class PrepareModelBehaviour(OneShotBehaviour):
-
         async def run(self):
             message = message_from_template(request_model_from_db_template,
                                             body=self.agent.currency_symbol,
@@ -51,6 +63,20 @@ class StrategyAgent(agent.Agent):
                 self.agent.log.debug("Retrieved model from db")
                 self.agent.model = model
                 self.agent.has_strategy = True
+                msg = self.agent.prepare_model_ready_message()
+                await self.send(msg)
+
+            self.agent.startup_done = True
+
+    class TrainingRequestBehaviour(CyclicBehaviour):
+        async def run(self):
+            request = await self.receive(config.timeout)
+            if request:
+                if self.agent.startup_done and self.agent.has_strategy:
+                    msg = self.agent.prepare_model_ready_message()
+                    await self.send(msg)
+                else:
+                    pass  # odpowiedź nastąpi po treningu lub załadowaniu modelu z bazy
 
     class TrainBehaviour(OneShotBehaviour):
         def __init__(self, *args, **kwargs):
@@ -99,6 +125,9 @@ class StrategyAgent(agent.Agent):
 
             self.agent.has_strategy = True
             self.agent.log.debug('Training done!')
+
+            msg = self.agent.prepare_model_ready_message()
+            await self.send(msg)
 
         async def compute_costs(self, population):
             jobs = await self.job_manager.create_jobs(data=population)

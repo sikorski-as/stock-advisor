@@ -15,14 +15,17 @@ class DecisionAgent(agent.Agent):
         super().__init__(jid, password, verify_security)
         self.log = tools.make_logger(self.jid)
         self.strategy_agents = set()
+        self.requested_training_of = {}
 
     async def setup(self):
         self.log.info('Starting!')
-        train_template = tools.create_template("inform", "train")
-        self.add_behaviour(self.TrainBehaviour(), train_template)
+
+        self.add_behaviour(self.TrainBehaviour(), protocol.request_train_template)
+        self.add_behaviour(self.TrainResponseBehaviour(), protocol.model_ready_template)
 
         list_request_template = tools.create_template("request", "list")
         self.add_behaviour(self.ListBehaviour(), list_request_template)
+
         list_response_template = tools.create_template("inform", "list")
         self.add_behaviour(self.ListResponseBehaviour(), list_response_template)
 
@@ -38,12 +41,31 @@ class DecisionAgent(agent.Agent):
             await strategy_agent.start(auto_register=True)
             self.strategy_agents.add(jid)
 
+        return jid
+
     class TrainBehaviour(CyclicBehaviour):
         async def run(self):
             message = await self.receive(config.timeout)
             if message is not None:
                 self.agent.log.info(f'Received request of training {message.body}')
-                await self.agent.ensure_strategy_agent(message.body.lower())
+                jid = await self.agent.ensure_strategy_agent(message.body.lower())
+                request = tools.message_from_template(protocol.request_train_template,
+                                                      to=jid,
+                                                      body=message.body)
+                self.agent.requested_training_of[message.body] = True
+                await self.send(request)
+
+    class TrainResponseBehaviour(CyclicBehaviour):
+        async def run(self):
+            response = await self.receive(config.timeout)
+            if response:
+                currency, *_ = jsonpickle.decode(response.body)
+                if self.agent.requested_training_of.get(currency, False):
+                    self.agent.requested_training_of[currency] = False
+                    response_to_interface = tools.message_from_template(protocol.model_ready_template,
+                                                                        to=f'interface_agent@{config.domain}',
+                                                                        body=response.body)
+                    await self.send(response_to_interface)
 
     class ListBehaviour(CyclicBehaviour):
         async def run(self):
@@ -97,7 +119,8 @@ class DecisionAgent(agent.Agent):
                 self.agent.log.info(f'{message.sender} says "{answer}"')
                 currency = str(message.sender).split('@')[0]  # to bardzo brzydki trick
                 body = jsonpickle.encode([currency, message.metadata['answer']])
-                response_to_interface = tools.create_message(to=f'interface_agent@{config.domain}', performative='inform',
+                response_to_interface = tools.create_message(to=f'interface_agent@{config.domain}',
+                                                             performative='inform',
                                                              ontology='decision', body=body)
                 await self.send(response_to_interface)
                 self.agent.log.info('Decision sent to interface!')

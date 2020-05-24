@@ -3,6 +3,7 @@ from spade import agent
 from spade.behaviour import OneShotBehaviour, CyclicBehaviour
 
 import config
+import protocol
 import response
 import tools
 from data_agent import DataAgent
@@ -73,8 +74,7 @@ class InterfaceAgent(agent.Agent):
         self.add_behaviour(self.ResponseDecisionBehaviour(), decision_template)
         list_template = tools.create_template("inform", "list")
         self.add_behaviour(self.ResponseListBehaviour(), list_template)
-        train_template = tools.create_template("inform", "train")
-        self.add_behaviour(self.ResponseTrainBehaviour(), train_template)
+        self.add_behaviour(self.ResponseTrainBehaviour(), protocol.model_ready_template)
 
         await self.spawn_agents()
 
@@ -85,7 +85,9 @@ class InterfaceAgent(agent.Agent):
             self.symbol = symbol
 
         async def run(self):
-            message = tools.create_message("decision_agent@127.0.0.1", "inform", "train", self.symbol)
+            message = tools.message_from_template(protocol.request_train_template,
+                                                  to="decision_agent@127.0.0.1",
+                                                  body=self.symbol)
             await self.send(message)
 
     class RequestListBehaviour(OneShotBehaviour):
