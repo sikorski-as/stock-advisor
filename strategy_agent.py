@@ -22,6 +22,9 @@ from strategy_worker_agent import StrategyAgentWorker
 from tools import make_logger, message_from_template
 
 
+WORKER_0_BADNESS = 6
+
+
 class StrategyAgent(agent.Agent):
     def __init__(self, jid, password, currency_symbol, verify_security=False):
         super().__init__(jid, password, verify_security)
@@ -88,7 +91,7 @@ class StrategyAgent(agent.Agent):
             self.workers = [f'{self.agent.currency_symbol}_worker_{i}@{domain}' for i in range(2)]
             self.job_manager = JobManager(workers=self.workers)
             for i, worker_jid in enumerate(self.workers):
-                badness = 6 if i == 0 else 0
+                badness = WORKER_0_BADNESS if i == 0 else 0
                 await StrategyAgentWorker(worker_jid, worker_jid, self.agent.currency_symbol, badness=badness).start(auto_register=True)
 
         async def run(self):
