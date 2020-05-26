@@ -21,24 +21,44 @@
 
 
  <script>
-         let ws = new WebSocket("ws://127.0.0.1:10001/");
+
+        let currencies = ['btc', 'eth', 'jsdt', 'xrp', 'bch', 'ltc', 'bsv', 'bnb', 'eos', 'xtz']
+        let ws = new WebSocket("ws://127.0.0.1:10001/");
 
 
         function train() {
             console.log("train");
-            const symbol = $("#train_symbol").val();
-            console.log($("#train_symbol").val());
-            ws.send(JSON.stringify({action: 'train', body: symbol}));
+            let inputSymbol = document.getElementById("train_symbol");
+            inputSymbol.setAttribute('style', 'border: 1px solid #ced4da;')
+            let symbol = inputSymbol.value;
+            console.log(symbol)
+
+            if(currencies.includes(symbol.toLowerCase())){
+                {#console.log($("#train_symbol").val());#}
+                ws.send(JSON.stringify({action: 'train', body: symbol}));
+            } else {
+                {#inputSymbol.style.border = "2px solid red;";#}
+                inputSymbol.setAttribute('style', 'border: 2px solid red;')
+            }
+
+
         }
 
 
         function decision() {
             console.log("decision");
-            const symbol = $("#decision_symbol").val();
-            console.log($("#decision_symbol").val());
+            let inputSymbol = document.getElementById("decision_symbol");
+            inputSymbol.setAttribute('style', 'border: 1px solid #ced4da;')
+            let symbol = inputSymbol.value;
 
-            ws.send(JSON.stringify({action: 'decision', body: symbol}));
+            console.log(symbol)
+
+            if(currencies.includes(symbol.toLowerCase())){
+                ws.send(JSON.stringify({action: 'decision', body: symbol}));
+            } else {
+                inputSymbol.setAttribute('style', 'border: 2px solid red;')
             }
+        }
 
 
         ws.onmessage = function (event) {
