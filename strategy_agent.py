@@ -16,7 +16,7 @@ from database.models import Model
 from decision import decision
 from job_manager import JobManager
 from protocol import give_negative_decision_template, request_model_from_db_template, give_model_template, \
-    save_model_to_db_template, give_data_template, reply_historical_data, give_decision_not_available_template
+    save_model_to_db_template, reply_historical_data, give_decision_not_available_template
 from protocol import request_decision_template, give_positive_decision_template, request_cost_computation
 from strategy_worker_agent import StrategyAgentWorker
 from tools import make_logger, message_from_template
@@ -32,6 +32,7 @@ class StrategyAgent(agent.Agent):
         self.log = make_logger(self.jid)
         self.training_behaviour = None
         self.has_strategy = False
+        self.has_records = False
         self.model = None
         self.decision_records = None
         self.startup_done = False
@@ -42,6 +43,7 @@ class StrategyAgent(agent.Agent):
         self.add_behaviour(self.PrepareModelBehaviour(), give_model_template)
         self.add_behaviour(self.PrepareDataBehaviour(), reply_historical_data)
         self.add_behaviour(self.TrainingRequestBehaviour(), protocol.request_train_template)
+        self.add_behaviour(self.GiveDecisionBehaviour(), request_decision_template)
 
     def prepare_model_ready_message(self):
         m = self.model
@@ -55,19 +57,20 @@ class StrategyAgent(agent.Agent):
         async def run(self):
             message = message_from_template(request_model_from_db_template,
                                             body=self.agent.currency_symbol,
-                                            to='data_agent@127.0.0.1')
+                                            to=f'data_agent@{config.domain}')
             await self.send(message)
             reply = await self.receive(10)
-            model = jsonpickle.loads(reply.body)
-            if not model:
-                self.agent.log.debug("No model found in db")
-                self.agent.add_behaviour(self.agent.training_behaviour)
-            else:
-                self.agent.log.debug("Retrieved model from db")
-                self.agent.model = model
-                self.agent.has_strategy = True
-                msg = self.agent.prepare_model_ready_message()
-                await self.send(msg)
+            if reply:
+                model = jsonpickle.loads(reply.body)
+                if not model:
+                    self.agent.log.debug("No model found in db")
+                    self.agent.add_behaviour(self.agent.training_behaviour)
+                else:
+                    self.agent.log.debug("Retrieved model from db")
+                    self.agent.model = model
+                    self.agent.has_strategy = True
+                    msg = self.agent.prepare_model_ready_message()
+                    await self.send(msg)
 
             self.agent.startup_done = True
 
@@ -104,15 +107,19 @@ class StrategyAgent(agent.Agent):
             repair = lambda genes: np.where(genes < 1, 1, genes)
             _mutate = lambda genes: genes + np.random.randint(-1, 2, size=(2,))
             mutate = lambda genes: repair(_mutate(genes))
+            flatten = lambda l: [item for sublist in l for item in sublist]
+            cross = lambda genes1, genes2: [(genes1[0], genes2[1]), (genes2[0], genes1[1])]
+            crossover = lambda population: flatten([cross(p1, p2) for p1, p2 in zip(population[0::2], population[1::2])])
 
             population = [random_genotype() for _ in range(population_size)]
             for i in range(niterations):
                 self.agent.log.debug(f'Starting iteration {i}')
-                population.extend([
-                    mutate(genotype) if np.random.random() > mutation_chance
+                population.extend(crossover(population))
+                population = [
+                    mutate(genotype) if np.random.random() < mutation_chance
                     else genotype
                     for genotype in population
-                ])
+                ]
                 await asyncio.sleep(0.5)  # slowdown of training for presentation purposes
                 costs = await self.compute_costs(population)
                 population = [genotype for (genotype, cost) in
@@ -124,7 +131,7 @@ class StrategyAgent(agent.Agent):
             self.agent.model = model
 
             message = message_from_template(save_model_to_db_template,
-                                            to="data_agent@127.0.0.1",
+                                            to=f"data_agent@{config.domain}",
                                             body=jsonpickle.dumps(model))
             await self.send(message)
 
@@ -185,7 +192,7 @@ class StrategyAgent(agent.Agent):
             msg = await self.receive(timeout=config.timeout)
             if msg is not None:
                 self.agent.log.debug('I got request_decision_template message!')
-                if self.agent.has_strategy:
+                if self.agent.has_strategy and self.agent.has_records:
                     # jest wytrenowany model, odsyłamy decyzję
                     if decision(self.agent.model.short_mean, self.agent.model.long_mean, self.agent.decision_records):
                         reply = message_from_template(give_positive_decision_template, to=str(msg.sender))
@@ -202,22 +209,21 @@ class StrategyAgent(agent.Agent):
 
     class PrepareDataBehaviour(OneShotBehaviour):
         async def run(self):
-            msg = tools.create_message(to="data_agent@127.0.0.1",
+            msg = tools.create_message(to=f"data_agent@{config.domain}",
                                        performative="inform", ontology="history",
                                        body=jsonpickle.encode(
                                            value=(self.agent.currency_symbol, 300)))  # jeśli dane z ostatnich dni
 
             await self.send(msg)
             reply = await self.receive(10)
-            records = jsonpickle.loads(reply.body)
-            # print(records)
-            self.agent.decision_records = list(map(lambda x: x.close, records))
-            self.agent.add_behaviour(StrategyAgent.GiveDecisionBehaviour(), request_decision_template)
-            # print(self.agent.decision_records)
+            if reply:
+                records = jsonpickle.loads(reply.body)
+                self.agent.decision_records = list(map(lambda x: x.close, records))
+                self.agent.has_records = True
 
 
 if __name__ == '__main__':
-    data_agent = DataAgent("data_agent@127.0.0.1", "data_agent")
+    data_agent = DataAgent(f"data_agent@{config.domain}", "data_agent")
     data_agent.start(auto_register=False)
-    agent = StrategyAgent(f'strategy_agent_worker@{domain}', 'strategy_agent_worker1', "USDT")
+    agent = StrategyAgent(f'strategy_agent_worker@{config.domain}', 'strategy_agent_worker1', "USDT")
     agent.start(auto_register=True)

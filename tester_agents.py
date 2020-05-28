@@ -4,6 +4,7 @@ from spade import quit_spade
 from spade.agent import Agent
 from spade.behaviour import OneShotBehaviour
 
+import config
 import tools
 from protocol import request_decision_template
 
@@ -19,7 +20,7 @@ class TestAgent(Agent):
     class TestMessage(OneShotBehaviour):
         async def run(self):
             self.agent.log.debug('Sending message...')
-            msg = tools.message_from_template(request_decision_template, to='strategy_agent@localhost')
+            msg = tools.message_from_template(request_decision_template, to=f'strategy_agent@{config.domain}')
             await self.send(msg)
             self.agent.log.debug('Message sent!')
             reply = await self.receive(timeout=5)
@@ -38,5 +39,5 @@ class TestAgent(Agent):
 
 
 if __name__ == '__main__':
-    tester = TestAgent('tester@localhost', 'tester')
+    tester = TestAgent(f'tester@{config.domain}', 'tester')
     tester.start()

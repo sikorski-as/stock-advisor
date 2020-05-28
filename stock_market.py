@@ -1,8 +1,10 @@
 import datetime
 import itertools
-import config
-import requests
 import json
+
+import requests
+
+import config
 import database.builder as builder
 from database.models import Record, Model
 

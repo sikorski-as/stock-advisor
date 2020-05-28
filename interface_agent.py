@@ -60,9 +60,9 @@ class InterfaceAgent(agent.Agent):
         return {}
 
     async def spawn_agents(self):
-        data_agent = DataAgent("data_agent@127.0.0.1", "data_agent")
+        data_agent = DataAgent(f"data_agent@{config.domain}", "data_agent")
         await data_agent.start(auto_register=False)
-        decision_agent = DecisionAgent("decision_agent@127.0.0.1", "decision_agent")
+        decision_agent = DecisionAgent(f"decision_agent@{config.domain}", "decision_agent")
         await decision_agent.start(auto_register=False)
 
     async def setup(self):
@@ -86,13 +86,13 @@ class InterfaceAgent(agent.Agent):
 
         async def run(self):
             message = tools.message_from_template(protocol.request_train_template,
-                                                  to="decision_agent@127.0.0.1",
+                                                  to=f"decision_agent@{config.domain}",
                                                   body=self.symbol)
             await self.send(message)
 
     class RequestListBehaviour(OneShotBehaviour):
         async def run(self):
-            message = tools.create_message("decision_agent@127.0.0.1", "request", "list", "list")
+            message = tools.create_message(f"decision_agent@{config.domain}", "request", "list", "list")
             await self.send(message)
 
     class RequestDecisionBehaviour(OneShotBehaviour):
@@ -101,7 +101,7 @@ class InterfaceAgent(agent.Agent):
             self.symbol = symbol
 
         async def run(self):
-            message = tools.create_message("decision_agent@127.0.0.1", "request", "decision", self.symbol)
+            message = tools.create_message(f"decision_agent@{config.domain}", "request", "decision", self.symbol)
             await self.send(message)
 
     class ResponseDecisionBehaviour(CyclicBehaviour):

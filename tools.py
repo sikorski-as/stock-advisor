@@ -2,8 +2,7 @@ import json
 import logging
 import sys
 import uuid
-from itertools import tee
-from typing import List, Dict, Tuple
+from typing import List
 
 from spade.message import Message
 from spade.template import Template

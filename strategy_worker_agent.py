@@ -5,6 +5,7 @@ from spade import agent
 from spade.behaviour import CyclicBehaviour, OneShotBehaviour
 from spade.message import Message
 
+import config
 import tools
 from config import domain
 from cost_function import cost_function
@@ -53,7 +54,7 @@ class StrategyAgentWorker(agent.Agent):
     class RetrieveDataBehaviour(OneShotBehaviour):
         async def run(self):
             self.agent.log.debug('Retrieving data from Data Agent')
-            msg = tools.create_message(to="data_agent@127.0.0.1",
+            msg = tools.create_message(to=f"data_agent@{config.domain}",
                                        performative="inform", ontology="history",
                                        body=jsonpickle.encode(value=(self.agent.currency_symbol, None))) # jeśli dane treningowe
 
@@ -68,7 +69,7 @@ class StrategyAgentWorker(agent.Agent):
 
 
 if __name__ == '__main__':
-    data_agent = DataAgent("data_agent@127.0.0.1", "data_agent")
+    data_agent = DataAgent(f"data_agent@{config.domain}", "data_agent")
     data_agent.start(auto_register=False)
     agent = StrategyAgentWorker(f'strategy_agent_worker1@{domain}', 'strategy_agent_worker1', "ETH")
     agent.start(auto_register=True)

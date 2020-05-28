@@ -1,4 +1,5 @@
 from spade.template import Template
+
 from tools import make_template
 
 "example template documentation string"
@@ -34,10 +35,10 @@ request_decision_template = make_template(performative='request', what='decision
 give_decision_template = make_template(performative='reply', what='decision')
 
 "positive_decision from strategy agent"
-give_positive_decision_template = make_template(performative='reply', what='decision', answer='yes')
+give_positive_decision_template = make_template(performative='reply', what='decision', answer='buy')
 
 "negative_decision from strategy agent"
-give_negative_decision_template = make_template(performative='reply', what='decision', answer='no')
+give_negative_decision_template = make_template(performative='reply', what='decision', answer='sell')
 
 "decision not available"
 give_decision_not_available_template = make_template(performative='reply', what='decision', answer='not available')

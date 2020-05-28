@@ -2,12 +2,12 @@ import asyncio
 
 import jsonpickle
 from spade import agent
-from spade.behaviour import CyclicBehaviour, OneShotBehaviour
+from spade.behaviour import CyclicBehaviour
 
+import config
 import protocol
 import tools
 from strategy_agent import StrategyAgent
-import config
 
 
 class DecisionAgent(agent.Agent):
@@ -127,5 +127,5 @@ class DecisionAgent(agent.Agent):
 
 
 if __name__ == '__main__':
-    agent = DecisionAgent('decision_agent@localhost', 'decision_agent')
+    agent = DecisionAgent(f'decision_agent@{config.domain}', 'decision_agent')
     agent.start()

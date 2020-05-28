@@ -2,18 +2,16 @@ import asyncio
 import itertools
 import json
 
+import aiohttp
 import jsonpickle as jsonpickle
 from aiohttp import ClientConnectorError
+from spade import agent
+from spade.behaviour import CyclicBehaviour
 
 import config
-
-from spade import agent
-from spade.behaviour import OneShotBehaviour, CyclicBehaviour
 import tools
 from database import builder
 from database.models import Model, Record
-import aiohttp
-
 from protocol import request_model_from_db_template, save_model_to_db_template
 
 
